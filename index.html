@@ -371,11 +371,17 @@ function gGo(g){if(GM&&!GM.over)return;GS.g=g;GS.msg="";GM=null;if(g=="foot")gFn
 function gBet(v){const n=Math.floor(Number(v));if(n>=1)GS.bet=Math.min(n,Math.max(1,~~S.bal))}
 function gTake(){const b=GS.bet;if(S.bal<1){toast("Нет денег. Вернитесь и нажмите «Заработать»");return 0}if(b<1||b>S.bal){GS.bet=Math.max(1,Math.min(~~S.bal,b));toast("Ставка уменьшена до "+f(GS.bet));games();return 0}S.bal-=b;return b}
 function gPay(w,m){S.bal+=w;GS.msg=m;save();games()}
-function gCoin(side){const b=gTake();if(!b)return;const r=ri(2),w=r==side?Math.floor(b*1.95):0;gPay(w,(r?"Решка":"Орёл")+" — "+(w?"выигрыш "+f(w):"проигрыш "+f(b)))}
-function gRou(t){let n=0;if(t=="n"){n=parseInt($("#gn").value);if(!(n>=0&&n<=36)){toast("Число от 0 до 36");return}}
- const b=gTake();if(!b)return;const r=ri(37),red=GRED.includes(r);let w=0;
+function gCoin(side){const b=gTake();if(!b)return;const r=ri(2),w=r==side?Math.floor(b*1.95):0;GM={t:"c",over:0};GS.msg="";games();let k=0;const N=16;
+ const tk=()=>{k++;const e=$("#cn"),v=k>=N?r:k%2;if(e){e.textContent=v?"РЕШКА":"ОРЁЛ";e.style.transform="scaleX("+(k>=N?1:k%2?.2:1)+")"}
+  if(k<N)setTimeout(tk,90+k*8);else{GM.over=1;GS.lc=r;gPay(w,(r?"Решка":"Орёл")+" — "+(w?"выигрыш "+f(w):"проигрыш "+f(b)))}};tk()}
+const gRc=v=>v===0?"#0a7":GRED.includes(v)?"#c22":"#222";
+function gX(m){GS.bet=m?Math.max(1,Math.min(~~S.bal,GS.bet*m)):Math.max(1,~~S.bal);games()}
+const gCard=(c,hid)=>hid?`<div style="display:inline-block;width:54px;height:78px;border-radius:7px;margin:3px;border:2px solid #fff;background:repeating-linear-gradient(45deg,#2a4aa8,#2a4aa8 5px,#1c3278 5px,#1c3278 10px)"></div>`:`<div style="display:inline-flex;flex-direction:column;justify-content:space-between;width:54px;height:78px;padding:4px 5px;box-sizing:border-box;border-radius:7px;margin:3px;background:#fff;color:${c.s=="♥"||c.s=="♦"?"#d11":"#111"};text-shadow:none;border:1px solid #999;font:700 18px/1 Georgia,serif;text-align:left"><span>${GCR[c.r]}</span><span style="align-self:center;font-size:26px">${c.s}</span><span style="align-self:flex-end;transform:rotate(180deg)">${GCR[c.r]}</span></div>`;
+function gRou(t,n){const b=gTake();if(!b)return;const r=ri(37),red=GRED.includes(r);let w=0;
  if(t=="n")w=r==n?b*36:0;else if(r>0&&(t=="r"&&red||t=="b"&&!red||t=="e"&&r%2==0||t=="o"&&r%2==1))w=b*2;
- gPay(w,"Выпало "+r+(r?red?" красное":" чёрное":" зелёное")+" — "+(w?"выигрыш "+f(w):"проигрыш "+f(b)))}
+ GM={t:"r",over:0};GS.msg="";games();let k=0;const N=26;
+ const tk=()=>{k++;const v=k>=N?r:ri(37),e=$("#rw");if(e){e.textContent=v;e.style.background=gRc(v)}
+  if(k<N)setTimeout(tk,60+k*k*.25);else{GM.over=1;GS.last=r;gPay(w,"Выпало "+r+(r?red?" красное":" чёрное":" зелёное")+" — "+(w?"выигрыш "+f(w):"проигрыш "+f(b)))}};tk()}
 function gBj(){const b=gTake();if(!b)return;GM={t:"bj",b,p:[gdc(),gdc()],d:[gdc(),gdc()],over:0};GS.msg="";if(ghv(GM.p)==21)gBjEnd();else{save();games()}}
 function gHit(){GM.p.push(gdc());if(ghv(GM.p)>21)gBjEnd();else games()}
 function gBjEnd(){const m=GM;m.over=1;const nat=m.p.length==2&&ghv(m.p)==21;
@@ -386,22 +392,74 @@ function gBjEnd(){const m=GM;m.over=1;const nat=m.p.length==2&&ghv(m.p)==21;
 function gMstart(){const b=gTake();if(!b)return;const m=new Set;while(m.size<3)m.add(ri(25));GM={t:"m",b,m,o:new Set,over:0};GS.msg="";save();games()}
 function gMopen(i){if(!GM||GM.over||GM.o.has(i))return;if(GM.m.has(i)){GM.over=1;GS.msg="Мина! Проигрыш "+f(GM.b);save()}else{GM.o.add(i);if(GM.o.size==22){gMcash();return}}games()}
 function gMcash(){if(!GM||GM.over||!GM.o.size)return;const k=GM.o.size,w=Math.floor(GM.b*gMul(k));GM.over=1;gPay(w,"Забрали "+f(w)+" (×"+gMul(k).toFixed(2)+")")}
-function games(){const act=!!(GM&&!GM.over),g=GS.g,B=(t,c,x="")=>`<button class="b ${c||""}" onclick="${t}" ${x}>`;let h="";
+function games(){if(S.fm)gFsettle();const act=!!(GM&&!GM.over)||(GS.g=="foot"&&!!S.fm),g=GS.g,B=(t,c,x="")=>`<button class="b ${c||""}" onclick="${t}" ${x}>`;let h="";
  if(g=="menu")h=`${B("gGo('coin')")}🪙 Орёл и решка</button>${B("gGo('rou')")}🎡 Рулетка</button>${B("gGo('bj')")}🃏 Блэкджек</button>${B("gGo('mines')")}💣 Мины</button>${B("gGo('foot')")}⚽ Ставки на футбол</button>`;
- else if(g=="foot")h=GF.map((m,i)=>`<div class="p"><div style="font-weight:700">${esc(GT[m.a][0])} — ${esc(GT[m.b][0])}</div><div class="row" style="margin-top:6px">${[0,1,2].map(k=>B("gFbet("+i+","+k+")","",`style="font-size:15px;padding:8px 2px"`)+["П1","Х","П2"][k]+" "+m.o[k].toFixed(2)+"</button>").join("")}</div></div>`).join("");
- else if(g=="coin")h=`<div class="row">${B("gCoin(0)","","")}Орёл</button>${B("gCoin(1)")}Решка</button></div><div class="p" style="font-size:14px">Угадал — ×1.95</div>`;
- else if(g=="rou")h=`<div class="row">${B("gRou('r')","r")}Красное ×2</button>${B("gRou('b')","g")}Чёрное ×2</button></div><div class="row">${B("gRou('e')")}Чётное ×2</button>${B("gRou('o')")}Нечётное ×2</button></div><div class="p"><div class="row"><input id="gn" type="number" min="0" max="36" placeholder="0–36" style="letter-spacing:0">${B("gRou('n')","k")}Число ×36</button></div></div><div class="p" style="font-size:14px">Ноль (зелёное) проигрывает все ставки, кроме числа</div>`;
- else if(g=="bj"){h=GM?`<div class="p">Вы: ${GM.p.map(gcs).join(" ")} (${ghv(GM.p)})<br>Дилер: ${GM.d.map((c,i)=>!GM.over&&i==1?"?":gcs(c)).join(" ")}${GM.over?" ("+ghv(GM.d)+")":""}</div>`:"";
+ else if(g=="foot"){const fm=S.fm;h=fm?(fm.tk?`<canvas id="fc" width="360" height="240" style="width:100%;border-radius:12px;touch-action:none;background:#1b2a3a" onpointerdown="gCP(event)" onpointermove="gCP(event)"></canvas>`:"")+`<div class="p" id="fml">${gFlive()}</div>`+(fm.tk?(fm.k==1?`<div class="p" style="font-size:14px">При ставке на ничью выбегать нельзя</div>`:B("gFplay()","r",fm.n>=3||S.bal<1000||CM?"disabled":"")+`🥅 Пробить пенальти — $1000 (осталось ${3-fm.n})</button>`):`<div class="p" style="font-size:14px">Билета нет, остаётся ждать результат</div>`):`<div class="p">${B("GS.tick=!GS.tick;games()",GS.tick?"k":"")}🎟 Билет на стадион $100: ${GS.tick?"ДА":"НЕТ"}</button><div style="font-size:13px;margin-top:6px">${GS.tick?"Смотрите матч на стадионе 2 минуты. За $1000 можно самому пробить пенальти (до 3 раз). Билет и ставка списываются сразу.":"Без билета результат придёт через 2 минуты."}</div></div>`+GF.map((m,i)=>`<div class="p"><div style="font-weight:700">${esc(GT[m.a][0])} — ${esc(GT[m.b][0])}</div><div class="row" style="margin-top:6px">${[0,1,2].map(k=>B("gFbet("+i+","+k+")","",`style="font-size:15px;padding:8px 2px"`)+["П1","Х","П2"][k]+" "+m.o[k].toFixed(2)+"</button>").join("")}</div></div>`).join("")}
+ else if(g=="coin"){const dis=act?"disabled":"";h=`<div id="cn" style="width:110px;height:110px;margin:6px auto;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff2a8,#e0aa1c 60%,#a87a10);border:4px solid #c99a1e;display:flex;align-items:center;justify-content:center;font:800 20px Georgia,serif;color:#6b4a00;text-shadow:none;box-shadow:0 4px 10px #0008">${GS.lc==null?"🪙":GS.lc?"РЕШКА":"ОРЁЛ"}</div><div class="row">${B("gCoin(0)","",dis)}Орёл</button>${B("gCoin(1)","",dis)}Решка</button></div><div class="p" style="font-size:14px">Угадал — ×1.95</div>`}
+ else if(g=="rou"){const dis=act?"disabled":"";h=`<div id="rw" class="p big" style="font-size:48px;background:${gRc(GS.last)}">${GS.last==null?"🎡":GS.last}</div><div class="row">${B("gRou('r')","r",dis)}Красное ×2</button>${B("gRou('b')","g",dis)}Чёрное ×2</button></div><div class="row">${B("gRou('e')","",dis)}Чётное ×2</button>${B("gRou('o')","",dis)}Нечётное ×2</button></div><div class="p"><div style="font-size:14px;margin-bottom:6px">Ставка на одно число: если выпадет, выигрыш ×36. Нажмите на число:</div><div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">${Array.from({length:37},(_,i)=>B("gRou('n',"+i+")","",`style="padding:8px 0;font-size:14px;background:${gRc(i)}" ${dis}`)+i+"</button>").join("")}</div></div>`}
+ else if(g=="bj"){h=GM?`<div class="p"><div style="font-size:14px">Дилер${GM.over?" ("+ghv(GM.d)+")":""}</div>${GM.d.map((c,i)=>gCard(c,!GM.over&&i==1)).join("")}<div style="font-size:14px;margin-top:6px">Вы (${ghv(GM.p)})</div>${GM.p.map(c=>gCard(c)).join("")}</div>`:"";
   h+=act?`<div class="row">${B("gHit()")}Взять</button>${B("gBjEnd()","k")}Хватит</button></div>`:`${B("gBj()","k")}${GM?"Новая раздача":"Раздать"}</button><div class="p" style="font-size:14px">Победа ×2, блэкджек ×2.5. Дилер берёт до 17</div>`}
  else if(g=="mines"){const k=GM?GM.o.size:0;h=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px">${Array.from({length:25},(_,i)=>{const o=GM&&GM.o.has(i),mn=GM&&GM.over&&GM.m.has(i);return B("gMopen("+i+")","",`style="padding:14px 0;${o?"background:#2a8a2a":mn?"background:#a22":""}" ${!act||o?"disabled":""}`)+(o?"💎":mn?"💣":"?")+"</button>"}).join("")}</div>`;
   h+=act?`${B("gMcash()","k",k?"":"disabled")}Забрать ${f(Math.floor(GM.b*gMul(k)))} (×${gMul(k).toFixed(2)})</button>`:`${B("gMstart()","k")}${GM?"Играть снова":"Начать"} (3 мины)</button>`}
- $("#app").innerHTML=`<div class="p big">Баланс: ${f(S.bal)}</div>${g!="menu"?`<div class="p"><div style="font-size:14px;opacity:.8">Ставка</div><input id="gbi" type="number" inputmode="numeric" min="1" value="${GS.bet}" ${act?"disabled":""} style="font-size:22px;font-weight:700;letter-spacing:0" oninput="gBet(this.value)" onchange="this.value=GS.bet"></div>`:""}${GS.msg?`<div class="p big">${GS.msg}</div>`:""}${h}${B(g=="menu"?"scr='main';render()":"gGo('menu')","g",act?"disabled":"")}Назад</button>`}
+ $("#app").innerHTML=`<div class="p big">Баланс: ${f(S.bal)}</div>${g!="menu"?`<div class="p"><div style="font-size:14px;opacity:.8">Ставка</div><input id="gbi" type="number" inputmode="numeric" min="1" value="${GS.bet}" ${act?"disabled":""} style="font-size:22px;font-weight:700;letter-spacing:0" oninput="gBet(this.value)" onchange="this.value=GS.bet"><div class="row" style="margin-top:6px">${[2,3,5].map(m=>B("gX("+m+")","s",act?"disabled":"")+"×"+m+"</button>").join("")}${B("gX(0)","s",act?"disabled":"")}Макс</button></div></div>`:""}${GS.msg?`<div class="p big">${GS.msg}</div>`:""}${h}${B(g=="menu"?"scr='main';render()":"gGo('menu')","g",GM&&!GM.over?"disabled":"")}Назад</button>`}
 const GT=[["Реал Мадрид",95],["Барселона",90],["Ман Сити",93],["Бавария",91],["ПСЖ",86],["Ливерпуль",89],["Арсенал",88],["Интер",85],["Ювентус",80],["Милан",79],["Челси",78],["Атлетико",82],["Боруссия Д",77],["Наполи",78]];
 let GF=[];
 function gFnew(){const ix=[...GT.keys()].sort(()=>R()-.5);GF=[];for(let i=0;i<3;i++){const a=ix[2*i],b=ix[2*i+1],pa=1/(1+Math.pow(10,(GT[b][1]-GT[a][1])/20)),px=.25,p=[(1-px)*pa,px,(1-px)*(1-pa)];GF.push({a,b,p,o:p.map(x=>Math.max(1.05,Math.floor(92/x)/100))})}}
 function gFout(m){const p=[...m.p];if(m.a==0||m.b==0){const r=m.a==0?0:2,o=2-r,rest=p[1]+p[o];p[r]=.75;p[1]=.25*p[1]/rest;p[o]=.25-p[1]}let x=R(),i=0;while(i<2&&x>=p[i]){x-=p[i];i++}return i}
 function gScore(o){if(o==1){const g=ri(4);return[g,g]}const w=1+ri(4),l=ri(w);return o==0?[w,l]:[l,w]}
-function gFbet(i,k){const m=GF[i],b=gTake();if(!b)return;const o=gFout(m),[x,y]=gScore(o),w=o==k?Math.floor(b*m.o[k]):0,t=GT[m.a][0]+" "+x+":"+y+" "+GT[m.b][0]+" — "+(w?"выигрыш "+f(w):"проигрыш "+f(b));gFnew();gPay(w,t)}
+function gFst(fm,min){const sc=[0,0],log=[];fm.ev.forEach(e=>{if(e[0]<=min){sc[e[1]]++;log.push([e[0],"⚽ "+GT[e[1]?fm.b:fm.a][0]])}});fm.ex.forEach(e=>{if(e[0]<=min){sc[e[1]]++;log.push([e[0],"🥅 Ваш пенальти — гол! "+GT[e[1]?fm.b:fm.a][0]])}});log.sort((p,q)=>p[0]-q[0]);return{sc,log}}
+function gFlive(){const fm=S.fm,el=(Date.now()-fm.t0)/1000,min=Math.min(90,Math.floor(el/fm.d*90)),{sc,log}=gFst(fm,min),left=Math.max(0,Math.ceil(fm.d-el)),t=Math.floor(left/60)+":"+String(left%60).padStart(2,"0"),nm=GT[fm.a][0]+" — "+GT[fm.b][0];
+ if(!fm.tk)return`<div style="font-weight:700">${nm}</div><div>Ставка ${f(fm.bet)} · ×${fm.o.toFixed(2)}</div><div class="big">⏳ Результат через ${t}</div>`;
+ return`<div style="font-weight:700">${GT[fm.a][0]} ${sc[0]} : ${sc[1]} ${GT[fm.b][0]}</div><div>${min}' · до конца ${t}</div><div style="font-size:14px;margin-top:6px">${log.map(l=>l[0]+"' "+l[1]).join("<br>")||"Пока без голов"}</div>`}
+function gFsettle(){const fm=S.fm;if(!fm||Date.now()-fm.t0<fm.d*1000)return false;const sc=gFst(fm,90).sc,o=sc[0]>sc[1]?0:sc[0]==sc[1]?1:2,w=o==fm.k?Math.floor(fm.bet*fm.o):0;
+ S.bal+=w;S.fm=null;GS.msg="Матч окончен: "+GT[fm.a][0]+" "+sc[0]+":"+sc[1]+" "+GT[fm.b][0]+" — "+(w?"выигрыш "+f(w):"проигрыш "+f(fm.bet));save();toast(GS.msg);return true}
+let CM=null,gLast=0;
+function gPitch(x){x.fillStyle="#1b2a3a";x.fillRect(0,0,360,240);
+ for(let i=0;i<60;i++)for(const[yy,q]of[[6,0],[14,1],[226,2],[234,3]]){x.fillStyle="hsl("+((i*47+q*90)%360)+",55%,"+(45+q*5)+"%)";x.fillRect(i*6+1,yy-3,4,5)}
+ for(let j=0;j<40;j++)for(const xx of[6,14,346,354]){x.fillStyle="hsl("+((j*53+xx)%360)+",55%,50%)";x.fillRect(xx-2,j*6+1,4,5)}
+ for(let i=0;i<8;i++){x.fillStyle=i%2?"#2e8b3a":"#3a9d46";x.fillRect(30+i*37.5,30,37.5,180)}
+ x.strokeStyle="#fff";x.lineWidth=2;x.strokeRect(30,30,300,180);x.beginPath();x.moveTo(180,30);x.lineTo(180,210);x.stroke();x.beginPath();x.arc(180,120,26,0,7);x.stroke();x.strokeRect(30,75,45,90);x.strokeRect(285,75,45,90);x.fillStyle="#fff";x.fillRect(24,95,6,50);x.fillRect(330,95,6,50)}
+function gDot(x,c,px,py,r){x.fillStyle=c;x.beginPath();x.arc(px,py,r,0,7);x.fill();x.strokeStyle="#fff";x.lineWidth=1;x.stroke()}
+function gTxt(x,t,y,sz){x.font="bold "+sz+"px sans-serif";x.textAlign="center";x.lineWidth=4;x.strokeStyle="#000";x.strokeText(t,180,y);x.fillStyle="#fff";x.fillText(t,180,y)}
+function gView(x,fm){const k=fm.d/90,t=Math.min(fm.d,(Date.now()-fm.t0)/1000),min=Math.min(90,Math.floor(t/k)),sc=gFst(fm,min).sc,
+ EL=fm.ev.map(e=>[e[0]*k,e[1],3]).concat((fm.mm||[]).map(e=>[e[0]*k,e[1],e[2]])).sort((a,b)=>a[0]-b[0]);
+ gPitch(x);let bx=180+Math.sin(t*.9)*50,by=120+Math.cos(t*1.3)*30,att=-1,p=1,label="";const gkY=[120,120],ev=EL.find(e=>t>=e[0]-3.2&&t<e[0]+1.8);
+ if(ev){const s=ev[1],gx=s?30:330,r=ev[2],yT=[120,95,70,112+(ev[0]*7%26)][r];att=s;
+  if(t<ev[0]){p=(t-(ev[0]-3.2))/3.2;bx=180+(gx-180)*p*p*.98;by=120+(yT-120)*p+Math.sin(p*10)*22*(1-p)}
+  else{const q=Math.min(1,(t-ev[0])/.5),dr=s?-1:1;label=["Вратарь спас!","Штанга!","Мимо!","ГОЛ!"][r];p=1;
+   bx=r==3?gx-dr*5:r==2?gx-dr*18:gx-dr*(4+60*q);by=yT+(r<2?(r==0?-20:20)*q:0);gkY[1-s]=r==0?yT:r==3?yT+(yT>120?-12:12):120}}
+ [[40,120],[110,80],[110,160],[165,100],[165,140]].forEach((q,i)=>{for(let side=0;side<2;side++){let px=side?360-q[0]:q[0],py=q[1]+Math.cos(t*1.1+i*2+side)*6;px+=Math.sin(t*1.3+i+side*3)*8;
+  if(att==side&&i>0)px+=(side?-1:1)*45*p;if(i==0)py=att==1-side?gkY[side]:120+Math.sin(t)*10;gDot(x,side?"#36f":"#e33",px,py,i?6:7)}});
+ gDot(x,"#fff",bx,by,4);x.fillStyle="#000a";x.fillRect(50,0,260,22);x.font="bold 14px sans-serif";x.textAlign="center";x.fillStyle="#fff";x.fillText(GT[fm.a][0].slice(0,10)+"  "+sc[0]+" : "+sc[1]+"  "+GT[fm.b][0].slice(0,10)+"  "+min+"'",180,16);
+ if(label)gTxt(x,label,125,30)}
+function gCtrl(dt,x,fm){const C=CM;C.t+=dt;
+ if(C.done>0){C.done-=dt;if(C.done<=0){CM=null;return}}
+ else if(C.sh){const s=C.sh;s.t+=dt;C.gx+=(s.tx-C.gx)*Math.min(1,dt*7);C.gy+=(s.ty-C.gy)*Math.min(1,dt*7);
+  if(s.t>=.6){let m;if(s.ax<70||s.ax>290||s.ay<40||s.ay>120)m="Мимо ворот!";else if(Math.hypot(s.tx-s.ax,s.ty-s.ay)<32)m="Вратарь спас!";else{m="ГОЛ!!!";const el=(Date.now()-fm.t0)/1000;fm.ex.push([Math.max(1,Math.floor(el/fm.d*90)),fm.k==0?0:1]);save();toast("⚽ Пенальти забит!")}C.msg=m;C.done=1.8}}
+ else if(C.t>12){C.msg="Время вышло";C.done=1.5}
+ x.fillStyle="#2e8b3a";x.fillRect(0,0,360,240);for(let i=0;i<6;i++){x.fillStyle=i%2?"#2e8b3a":"#3a9d46";x.fillRect(0,40+i*34,360,34)}
+ x.fillStyle="#1b2a3a";x.fillRect(0,0,360,40);for(let i=0;i<60;i++)for(let j=0;j<5;j++){x.fillStyle="hsl("+((i*47+j*80)%360)+",55%,50%)";x.fillRect(i*6+1,j*7+3,4,5)}
+ x.strokeStyle="#ffffff55";x.lineWidth=1;for(let i=70;i<=290;i+=15){x.beginPath();x.moveTo(i,40);x.lineTo(i,120);x.stroke()}for(let j=40;j<=120;j+=10){x.beginPath();x.moveTo(70,j);x.lineTo(290,j);x.stroke()}
+ x.strokeStyle="#fff";x.lineWidth=4;x.strokeRect(70,40,220,80);x.lineWidth=2;x.beginPath();x.arc(180,230,40,Math.PI*1.15,Math.PI*1.85);x.stroke();
+ const s=C.sh,q=s?Math.min(1,s.t/.45):0,bx=s?180+(s.ax-180)*q:180,by=s?205+(s.ay-205)*q:205;
+ x.fillStyle="#fc0";x.fillRect(C.gx-7,C.gy-12,14,26);x.fillRect(C.gx-18,C.gy-8,36,5);gDot(x,"#fc0",C.gx,C.gy-18,6);
+ gDot(x,fm.k==0?"#e33":"#36f",130,222,8);gDot(x,"#fff",bx,by,8-4*q);
+ x.fillStyle="#000a";x.fillRect(30,40,300,0);x.font="bold 13px sans-serif";x.textAlign="center";x.fillStyle="#fff";x.fillText("Пенальти! Нажмите в ворота, куда бить",180,158);
+ if(C.msg&&C.done>0)gTxt(x,C.msg,190,30)}
+function gCP(e){const C=CM;if(!C||C.sh||C.done>0||e.type!="pointerdown")return;const r=e.currentTarget.getBoundingClientRect(),X=(e.clientX-r.left)/r.width*360,Y=(e.clientY-r.top)/r.height*240,near=R()<.4;
+ C.sh={t:0,ax:X,ay:Y,tx:near?Math.max(80,Math.min(280,X+ri(31)-15)):90+ri(180),ty:near?Math.max(48,Math.min(112,Y+ri(31)-15)):50+ri(60)}}
+function gFframe(ts){requestAnimationFrame(gFframe);const dt=Math.min(.05,(ts-gLast)/1000||0);gLast=ts;
+ try{if(scr!="games"||GS.g!="foot"||!S||!S.fm||!S.fm.tk){CM=null;return}const c=document.getElementById("fc");if(!c)return;const x=c.getContext("2d");if(CM)gCtrl(dt,x,S.fm);else gView(x,S.fm)}catch(e){}}
+if(typeof requestAnimationFrame!="undefined")requestAnimationFrame(gFframe);
+function gFplay(){const fm=S.fm;if(!fm||!fm.tk||fm.n>=3||fm.k==1||CM)return;const el=(Date.now()-fm.t0)/1000;if(el>fm.d-15){toast("Слишком поздно для пенальти");return}if(S.bal<1000){toast("Нужно $1000");return}
+ S.bal-=1000;fm.n++;CM={t:0,done:0,msg:"",sh:null,gx:180,gy:95};save();games()}
+function gFtick(){try{if(!ACC||!S||!S.fm)return;if(gFsettle()){if(scr=="games")games();return}if(scr=="games"&&GS.g=="foot"){const e=$("#fml");if(e)e.innerHTML=gFlive()}}catch(e){}}
+setInterval(gFtick,1000);
+function gFbet(i,k){const m=GF[i],tk=GS.tick?1:0;if(S.fm){toast("Матч уже идёт");return}
+ if(tk&&S.bal<GS.bet+100){toast("Не хватает на ставку и билет $100");return}
+ const b=gTake();if(!b)return;if(tk)S.bal-=100;
+ const o=gFout(m),[x,y]=gScore(o),sl=[7,15,23,31,39,47,55,63,71,79,87].sort(()=>R()-.5),ev=[],mm=[];let q=0;for(let j=0;j<x;j++)ev.push([sl[q++]+ri(3),0]);for(let j=0;j<y;j++)ev.push([sl[q++]+ri(3),1]);while(q<sl.length&&mm.length<4)mm.push([sl[q++]+ri(3),ri(2),ri(3)]);ev.sort((p,q)=>p[0]-q[0]);
+ S.fm={a:m.a,b:m.b,k,o:m.o[k],bet:b,tk,t0:Date.now(),d:120,ev,mm,ex:[],n:0};gFnew();GS.msg="";save();games()}
 function openShop(fr){free=!!fr;scr="shop";cat="bg";fl="all";render()}
 function shop(){
  L=Object.entries(ITEMS[cat]).filter(([n,o])=>fl=="all"||o.r==fl);
