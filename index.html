@@ -130,10 +130,12 @@ let DB=null,ACC=null,AID="",NICK="",aerr="",sv,PL=[];
 try{NICK=localStorage.getItem("depai_u")||""}catch(e){}
 const MEM={};
 async function H(id,p){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("depai1:"+id+":"+p));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}
-const pack=a=>({nick:a.nick,ph:a.ph||"",banned:a.banned||0,bal:Math.round((a.s&&a.s.bal)||0),t:a.t||0,ad:a.ad||0,sj:JSON.stringify(a.s||{})});
-const unpack=d=>{d=JSON.parse(JSON.stringify(d));let s=d.s||{};if(d.sj){try{s=JSON.parse(d.sj)}catch(e){}}return{nick:d.nick,pass:d.pass,ph:d.ph||"",banned:d.banned||0,t:d.t||0,ad:d.ad||0,del:d.del||0,s}};
+const pack=a=>({nick:a.nick,ph:a.ph||"",banned:a.banned||0,br:a.br||"",bu:a.bu||0,bal:Math.round((a.s&&a.s.bal)||0),t:a.t||0,ad:a.ad||0,sj:JSON.stringify(a.s||{})});
+const isBan=a=>!!(a&&a.banned&&(!a.bu||a.bu>Date.now()));
+const banInfo=a=>(a.bu?"до "+new Date(a.bu).toLocaleString("ru"):"навсегда")+(a.br?" · "+a.br:"");
+const unpack=d=>{d=JSON.parse(JSON.stringify(d));let s=d.s||{};if(d.sj){try{s=JSON.parse(d.sj)}catch(e){}}return{nick:d.nick,pass:d.pass,ph:d.ph||"",banned:d.banned||0,br:d.br||"",bu:d.bu||0,t:d.t||0,ad:d.ad||0,del:d.del||0,s}};
 function save(){if(!ACC)return;ACC.s=S;ACC.t=Date.now();MEM[AID]=ACC;try{localStorage.setItem("acc:"+AID,JSON.stringify(ACC))}catch(e){}clearTimeout(sv);sv=setTimeout(cloud,1500)}
-function cloud(){if(DB&&ACC){const r=DB.doc("players/"+AID),d=pack(ACC);delete d.banned;delete d.nick;delete d.pass;delete d.ph;delete d.ad;r.update(d).catch(()=>r.set(pack(ACC)).catch(()=>{}))}}
+function cloud(){if(DB&&ACC){const r=DB.doc("players/"+AID),d=pack(ACC);delete d.banned;delete d.br;delete d.bu;delete d.nick;delete d.pass;delete d.ph;delete d.ad;r.update(d).catch(()=>r.set(pack(ACC)).catch(()=>{}))}}
 async function getAcc(id){let c=null,l=null;
  if(DB){try{const s=await to(DB.doc("players/"+id).get());if(s.exists)c=unpack(s.data())}catch(e){}}
  if(c&&c.del){try{localStorage.removeItem("acc:"+id)}catch(e){}delete MEM[id];return null}
@@ -158,14 +160,14 @@ async function authGo(create){
  if(p.length<3||p.length>24)return err("Пароль: 3–24 символа");
  const id=hex(n);let a=await getAcc(id);const h=await H(id,p);
  if(create){if(a)return err("Этот ник уже занят");a={nick:n,pass:p,ph:h,banned:0,s:FRESH(),t:Date.now()}}
- else{if(!a||!((a.ph&&a.ph===h)||(a.pass&&a.pass===p)))return err("Неверный ник или пароль");if(a.banned)return err("Аккаунт заблокирован")}
+ else{if(!a||!((a.ph&&a.ph===h)||(a.pass&&a.pass===p)))return err("Неверный ник или пароль");if(isBan(a))return err("Аккаунт заблокирован: "+banInfo(a))}
  a.pass=p;a.ph=h;await putAcc(id,a);login(id,a)}
 function auth(n){
  $("#app").innerHTML=`<div class="p big" style="color:#ffc864;margin-top:30px">🎲 ДЭПАЙ</div>
  <div class="p" style="display:flex;flex-direction:column;gap:10px"><div>Введите ник и пароль</div>
  <input id="an" maxlength="16" placeholder="Ник" autocomplete="username" autocapitalize="none" style="letter-spacing:0" value="${esc(n||"")}">
  <input id="ap" type="password" maxlength="24" placeholder="Пароль" autocomplete="current-password" style="letter-spacing:0">
- ${aerr?`<div style="color:#f77;font-weight:700">${aerr}</div>`:""}
+ ${aerr?`<div style="color:#f77;font-weight:700">${esc(aerr)}</div>`:""}
  <button class="b k" onclick="authGo(0)">Войти</button><button class="b" onclick="authGo(1)">Создать аккаунт</button></div>`}
 async function loadPL(){const m=new Map();
  try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k.startsWith("acc:")){const a=JSON.parse(localStorage.getItem(k));if(a&&a.nick)m.set(k.slice(4),{id:k.slice(4),a,src:"📱"})}}}catch(e){}
@@ -176,24 +178,24 @@ async function loadPL(){const m=new Map();
 function plr(){$("#app").innerHTML=`<div class="p">Загрузка…</div>`;loadPL().then(()=>{if(scr!="plr")return;
  $("#app").innerHTML=`<div class="p big" style="color:#ffc864">👥 Игроки</div><div class="p">Всего: ${PL.length} · ☁ общие, 📱 только на этом устройстве</div>
  <div class="p" style="font-size:12px;word-break:break-all;user-select:text!important;-webkit-user-select:text!important">Ваш UID (для раздела admins): ${UID||"нет подключения к базе"}</div>
- <div>${PL.map((p,i)=>`<div class="pl" style="background:${p.a.banned?"#3c2828":"#283c28"};gap:6px;align-items:center;flex-wrap:wrap"><span>${p.src} <b>${esc(p.a.nick)}</b></span><span style="color:#ffdc64">${esc(p.a.pass||"—")}</span><span>${f((p.a.s&&p.a.s.bal)||0)}</span><button class="b s" style="flex:0 0 auto" onclick="pm(${i})">Открыть</button><button class="b s ${p.a.banned?"k":"r"}" style="flex:0 0 auto" onclick="ban(${i})">${p.a.banned?"Разбанить":"Бан"}</button></div>`).join("")||`<div class="p">Пока никого</div>`}</div>
+ <div>${PL.map((p,i)=>`<div class="pl" style="background:${isBan(p.a)?"#3c2828":"#283c28"};gap:6px;align-items:center;flex-wrap:wrap"><span>${p.src} <b>${esc(p.a.nick)}</b>${isBan(p.a)?`<br><span style="font-size:12px;opacity:.85">🚫 ${esc(banInfo(p.a))}</span>`:""}</span><span style="color:#ffdc64">${esc(p.a.pass||"—")}</span><span>${f((p.a.s&&p.a.s.bal)||0)}</span><button class="b s" style="flex:0 0 auto" onclick="pm(${i})">Открыть</button><button class="b s ${isBan(p.a)?"k":"r"}" style="flex:0 0 auto" onclick="ban(${i})">${isBan(p.a)?"Разбанить":"Бан"}</button></div>`).join("")||`<div class="p">Пока никого</div>`}</div>
  <button class="b" onclick="scr='admin';render()">Назад</button>`})}
 let PI=0,PC=0;
 function pm(i){PI=i;PC=0;scr="pm";render()}
 function pmr(){const p=PL[PI],a=p.a,s=a.s||{};
  const opt=k=>`<select id="sk${k}" style="font-size:16px;padding:8px;border-radius:8px;flex:2">${Object.keys(ITEMS[k]).filter(n=>!ITEMS[k][n].img).map(n=>`<option ${s[k]==n?"selected":""}>${n}</option>`).join("")}</select>`;
  $("#app").innerHTML=`<div class="p big" style="color:#ffc864">${esc(a.nick)}</div>
- <div class="p">Пароль: <b>${esc(a.pass||"—")}</b><br>Баланс: ${f(s.bal||0)} · Долг: ${f(s.debt||0)} · Дней: ${s.days||1}<br>${a.banned?"🚫 Забанен":"Активен"} · ${p.src=="☁"?"☁ общая база":"📱 только на этом устройстве"}</div>
+ <div class="p">Пароль: <b>${esc(a.pass||"—")}</b><br>Баланс: ${f(s.bal||0)} · Долг: ${f(s.debt||0)} · Дней: ${s.days||1}<br>${isBan(a)?"🚫 Бан "+esc(banInfo(a)):"Активен"} · ${p.src=="☁"?"☁ общая база":"📱 только на этом устройстве"}</div>
  <div class="row"><button class="b s" onclick="pAdd(1000)">+1,000</button><button class="b s" onclick="pAdd(100000)">+100,000</button><button class="b s" onclick="pAdd(1e6)">+1,000,000</button></div>
  <div class="p" style="display:flex;flex-direction:column;gap:8px"><input id="pmi" type="number" inputmode="numeric" placeholder="своя сумма" style="letter-spacing:0"><div class="row"><button class="b s k" onclick="pAddN(0)">Добавить</button><button class="b s" onclick="pAddN(1)">Установить баланс</button></div></div>
  <div class="p" style="display:flex;flex-direction:column;gap:8px"><div>Скины: выдать и надеть</div>${[["bg","Фон"],["bt","Кнопки"],["pn","Панели"]].map(([k,l])=>`<div class="row" style="align-items:center"><span>${l}</span>${opt(k)}<button class="b s" onclick="pSkin('${k}')">OK</button></div>`).join("")}</div>
  <button class="b" onclick="pEdit(s=>s.debt=0,'Долг убран')">Убрать долг</button>
- ${PC?`<div class="p" style="background:#6a2020">Удалить «${esc(a.nick)}» навсегда?<div class="row"><button class="b r" onclick="pDel2()">Да, удалить</button><button class="b g" onclick="PC=0;pmr()">Нет</button></div></div>`:`<div class="row"><button class="b ${a.banned?"k":"r"}" onclick="ban(${PI})">${a.banned?"Разбанить":"Бан"}</button><button class="b r" onclick="PC=1;pmr()">Удалить аккаунт</button></div>`}
+ ${PC?`<div class="p" style="background:#6a2020">Удалить «${esc(a.nick)}» навсегда?<div class="row"><button class="b r" onclick="pDel2()">Да, удалить</button><button class="b g" onclick="PC=0;pmr()">Нет</button></div></div>`:`<div class="row"><button class="b ${isBan(a)?"k":"r"}" onclick="ban(${PI})">${isBan(a)?"Разбанить":"Бан"}</button><button class="b r" onclick="PC=1;pmr()">Удалить аккаунт</button></div>`}
  <button class="b g" onclick="scr='plr';render()">← К списку</button>`}
 async function pEdit(fn,msg){const p=PL[PI];if(p.id==AID){toast("Свой аккаунт меняйте прямо в игре");return}
  const a=p.a;a.s=a.s||FRESH();fn(a.s);a.t=Date.now();a.ad=Date.now();let ok=false;
  try{const l=JSON.parse(localStorage.getItem("acc:"+p.id)||"null");if(l){l.s=a.s;l.t=a.t;l.ad=a.ad;localStorage.setItem("acc:"+p.id,JSON.stringify(l));ok=true}}catch(e){}
- if(DB&&p.src=="☁"){try{const d=pack(a);delete d.nick;delete d.pass;delete d.ph;delete d.banned;await to(DB.doc("players/"+p.id).update(d));ok=true}catch(e){}}
+ if(DB&&p.src=="☁"){try{const d=pack(a);delete d.nick;delete d.pass;delete d.ph;delete d.banned;delete d.br;delete d.bu;await to(DB.doc("players/"+p.id).update(d));ok=true}catch(e){}}
  toast(ok?msg||"Готово":"Не удалось сохранить");pmr()}
 const pAdd=n=>pEdit(s=>s.bal=(s.bal||0)+n,"+"+f(n));
 function pAddN(set){const n=Math.floor(Number($("#pmi").value));if(!(n>=0)||($("#pmi").value==="")){toast("Введите сумму");return}
@@ -203,14 +205,24 @@ async function pDel2(){const p=PL[PI];PC=0;if(p.id==AID){toast("Себя уда�
  try{localStorage.removeItem("acc:"+p.id)}catch(e){}delete MEM[p.id];let ok=true;
  if(DB){try{await to(DB.doc("players/"+p.id).set({nick:p.a.nick,del:1,t:Date.now(),pass:"",banned:0,bal:0,sj:"{}"}));}catch(e){if(p.src=="☁")ok=false}}
  toast(ok?"Аккаунт удалён":"Не удалось удалить в общей базе");scr="plr";render()}
-async function ban(i){const p=PL[i];if(p.id==AID){toast("Себя банить нельзя");return}
- const nb=p.a.banned?0:1;let ok=false;
- try{const l=JSON.parse(localStorage.getItem("acc:"+p.id)||"null");if(l){l.banned=nb;localStorage.setItem("acc:"+p.id,JSON.stringify(l));ok=true}}catch(e){}
- if(DB){try{await to(DB.doc("players/"+p.id).update({banned:nb}));ok=true}catch(e){}}
- toast(ok?(nb?"Забанен: ":"Разбанен: ")+p.a.nick:"Не удалось: нет доступа к общей базе");if(scr=="pm")pmr();else plr()}
+function ban(i){const p=PL[i];if(p.id==AID){toast("Себя банить нельзя");return}if(isBan(p.a))doBan(i,"",null);else banForm(i)}
+function banForm(i){const p=PL[i],o=document.createElement("div");o.className="ov";
+ o.innerHTML=`<div class="p"><div style="font-weight:700;font-size:18px">Бан: ${esc(p.a.nick)}</div><input class="bnr" maxlength="100" placeholder="Причина" style="letter-spacing:0"><input class="bnt" maxlength="12" placeholder="На сколько: 30м, 2ч, 3д" style="letter-spacing:0"><div style="font-size:12px;opacity:.8">Второе поле: м = минуты, ч = часы, д = дни. Просто число = часы. Пусто = навсегда.</div><div class="row"><button class="b r by">Забанить</button><button class="b g bn">Отмена</button></div></div>`;
+ document.body.appendChild(o);
+ o.querySelector(".bn").onclick=()=>o.remove();
+ o.querySelector(".by").onclick=()=>{const r=o.querySelector(".bnr").value,t=o.querySelector(".bnt").value;o.remove();doBan(i,r,t)};
+ setTimeout(()=>{try{o.querySelector(".bnr").focus()}catch(e){}},50)}
+async function doBan(i,r,t){const p=PL[i];let nb=0,br="",bu=0;
+ if(t!==null){const m=String(t).trim().toLowerCase().match(/^(\d+(?:[.,]\d+)?)\s*([мmчhдd]?)/);
+  if(m&&parseFloat(m[1].replace(",","."))>0){const n=parseFloat(m[1].replace(",",".")),u=m[2];const mul=(u=="м"||u=="m")?60000:(u=="д"||u=="d")?86400000:3600000;bu=Date.now()+Math.round(n*mul)}
+  nb=1;br=String(r).replace(/[<>&"'`]/g,"").trim().slice(0,100)}
+ p.a.banned=nb;p.a.br=br;p.a.bu=bu;let ok=false;
+ try{const l=JSON.parse(localStorage.getItem("acc:"+p.id)||"null");if(l){l.banned=nb;l.br=br;l.bu=bu;localStorage.setItem("acc:"+p.id,JSON.stringify(l));ok=true}}catch(e){}
+ if(DB){try{await to(DB.doc("players/"+p.id).update({banned:nb,br:br,bu:bu}));ok=true}catch(e){console.error(e)}}
+ toast(ok?(nb?"Забанен: "+p.a.nick+" "+banInfo(p.a):"Разбанен: "+p.a.nick):"Не удалось: нет доступа к общей базе");if(scr=="pm")pmr();else plr()}
 async function chk(){if(!DB||!ACC||scr=="coin")return;try{const s=await to(DB.doc("players/"+AID).get());if(!s.exists)return;const d=unpack(s.data());
  if(d.del){aerr="Аккаунт удалён";logout();return}
- if(d.banned){aerr="Аккаунт заблокирован";logout();return}
+ if(isBan(d)){aerr="Аккаунт заблокирован: "+banInfo(d);logout();return}
  if(d.ad>(ACC.ad||0)&&st=="bet"&&!modal){ACC.ad=d.ad;loadS(d.s);ACC.s=S;bet=Math.min(bet,Math.max(1,~~S.bal));save();toast("Админ обновил ваш аккаунт");if(scr=="main"||scr=="shop")render()}}catch(e){}}
 
 
