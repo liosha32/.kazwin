@@ -120,7 +120,7 @@ Object.assign(ITEMS.cd["Неоновые"],{fb:"#04141a",ft:"#0ff"});
 Object.assign(ITEMS.cd["Матрица"],{fb:"#031003",ft:"#0f0"});
 Object.assign(ITEMS.cd["Божественные"],{fb:"#fffbe8",ft:"#a87a10"});
 Object.assign(ITEMS.cd["Пламя"],{fb:"#200a00",ft:"#ffb050"});
-const SV=(w,hh,b)=>`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}">${b}</svg>`)}")`;
+ const SV=(w,hh,b)=>`url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${hh}">${b}</svg>`)}")`;
 const FL=(n,w,hh,r)=>Array.from({length:n},(_,i)=>`<circle cx="${(i*47+13)%w}" cy="${(i*31+7)%hh}" r="${r*(1+i%3*.4)}" fill="#fff"/>`).join("");
 const CR=(x,a,b)=>`<g transform="translate(${x} 0)"><rect x="4" y="13" width="50" height="10" rx="3" fill="${a}"/><path d="M14 13l7-9h18l8 9z" fill="${b}"/><rect x="22" y="6" width="7" height="6" fill="#bdf"/><rect x="31" y="6" width="7" height="6" fill="#bdf"/><circle cx="16" cy="24" r="5" fill="#111"/><circle cx="43" cy="24" r="5" fill="#111"/></g>`;
 const HS=`<path d="M6 60V34l22-16 22 16v26z" fill="#33395c"/><path d="M2 36l26-20 26 20z" fill="#fff"/><rect x="20" y="40" width="9" height="10" fill="#fd6"/><rect x="34" y="40" width="9" height="10" fill="#fd6"/><path d="M74 60V28l26-18 26 18v32z" fill="#3b4268"/><path d="M68 30l32-23 32 23z" fill="#fff"/><rect x="88" y="36" width="10" height="12" fill="#fd6"/><rect x="104" y="36" width="10" height="12" fill="#fd6"/><path d="M150 60V38l18-13 18 13v22z" fill="#2c3252"/><path d="M146 40l22-17 22 17z" fill="#fff"/><rect x="162" y="44" width="8" height="10" fill="#fd6"/>`;
@@ -151,17 +151,18 @@ matrix:`background:${MX(60,120,3)} 0 0/60px 120px,${MX(96,140,5)} 0 0/96px 140px
 fireflies:`background:${FF(120,80,6)} 0 0/120px 80px,${FF(90,60,4)} 0 0/90px 60px,${TR} 0 100%/80px 25px repeat-x,var(--v);animation:ffl 9s linear infinite`,
 ship:`background:${SH} 0 calc(100% - 4px)/160px 30px repeat-x,${WV(80,"#2a7fc0")} 0 100%/80px 16px repeat-x,${WV(60,"#1c5f96")} 0 calc(100% + 4px)/60px 16px repeat-x,var(--v);animation:shp 6s linear infinite`};
 (()=>{let c="";for(const n in AN){for(const[k,s,v]of[["bt",".b","--btn"],["pn",".p","--panel"]])c+=`html[data-${k}=${n}] ${s}{${AN[n].replace("--v",v)}}\n`+(AN[n].includes("var(--v)")&&n!="shine"?`html[data-${k}=${n}] ${s}{font-weight:700;text-shadow:0 0 3px #000,0 0 5px #000,0 1px 2px #000}\n`:"");c+=`.pv-${n}{${AN[n].replace("--v","--pvc").replace(/background:([^;]*?)(!important)?(;|$)/,"background:$1!important$3")}}\n`}const e=document.createElement("style");e.textContent=c;document.head.appendChild(e)})();
-const CATN={bg:"Фоны",bt:"Кнопки",pn:"Панели",cn:"Монеты",cd:"Карты"};
+ const CATN={bg:"Фоны",bt:"Кнопки",pn:"Панели",cn:"Монеты",cd:"Карты"};
 const PROMO={"123":100,"456":200,"789":300,"111":500,"222":1000,"333":1500,"444":2000,"555":2500,"666":3000,"777":3500,"888":4000,"999":4500,"000":5000,MONEY:1e4,CASH:15e3,GOLD:2e4,RICH:25e3,WIN:3e4,LUCK:35e3,STAR:4e4,KING:45e3,BOSS:5e4,TOP:55e3,PRO:6e4,GOD:65e3,BONUS100:1e5,BONUS200:15e4,BONUS300:2e5,BONUS400:25e4,BONUS500:3e5,MILLION1:1e6,MILLION2:15e5,MILLION3:2e6,"221188":1e6,"06032012":1e6,DEPAI:1e6,SUPER:1e6,MEGA:1e6,ULTRA:1e6,LEGEND:1e6,MYTH:1e6,EPIC:1e6,RARE:1e6};
 let S={bal:1000,debt:0,dp:.05,days:1,admin:0,bg:"Темный",bt:"Стандартный",pn:"Стандартный",cn:"Стандартная",cd:"Стандартные",owned:["bg:Темный","bt:Стандартный","pn:Стандартный","cn:Стандартная","cd:Стандартные"],used:[],pred:0,pr:null,tB:0,tP:0,tC:0,tG:0,skins:[]};
 const FRESH=()=>({bal:1000,debt:0,dp:.05,days:1,admin:0,bg:"Темный",bt:"Стандартный",pn:"Стандартный",cn:"Стандартная",cd:"Стандартные",owned:["bg:Темный","bt:Стандартный","pn:Стандартный","cn:Стандартная","cd:Стандартные"],used:[],pred:0,pr:null,tB:0,tP:0,tC:0,tG:0,skins:[]});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>"&#"+c.charCodeAt(0)+";");
 const hex=s=>Array.from(new TextEncoder().encode(s.toLowerCase())).map(b=>b.toString(16).padStart(2,"0")).join("");
 const to=(p,ms=4000)=>Promise.race([p,new Promise((_,j)=>setTimeout(j,ms))]);
+const ENC=s=>JSON.stringify(s),DEC=s=>typeof s==="string"?JSON.parse(s):s;
 let DB=null,ACC=null,AID="",NICK="",aerr="",sv,PL=[];
 try{NICK=localStorage.getItem("depai_u")||""}catch(e){}
 const MEM={};
-async function H(id,p){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("depai1:"+id+":"+p));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function H(id,p){if(!(window.crypto&&crypto.subtle)){let h=5381;for(const ch of "depai1:"+id+":"+p)h=(h*33^ch.charCodeAt(0))>>>0;return"f"+h}const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("depai1:"+id+":"+p));return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,"0")).join("")}
 const pack=a=>({nick:a.nick,ph:a.ph||"",banned:a.banned||0,br:a.br||"",bu:a.bu||0,bal:Math.round((a.s&&a.s.bal)||0),t:a.t||0,ad:a.ad||0,sj:JSON.stringify(a.s||{})});
 const isBan=a=>!!(a&&a.banned&&(!a.bu||a.bu>Date.now()));
 const banInfo=a=>(a.bu?"до "+new Date(a.bu).toLocaleString("ru"):"навсегда")+(a.br?" · "+a.br:"");
@@ -257,7 +258,7 @@ async function chk(){if(!DB||!ACC||scr=="coin")return;try{const s=await to(DB.do
  if(d.del){aerr="Аккаунт удалён";logout();return}
  if(isBan(d)){aerr="Заблокирован: "+banInfo(d);logout();return}
  if(d.ad>(ACC.ad||0)&&st=="bet"&&!modal){ACC.ad=d.ad;loadS(d.s);ACC.s=S;resetRound();bet=Math.min(bet,Math.max(1,Math.floor(S.bal)));save();toast("Админ обновил аккаунт");if(scr=="main"||scr=="shop")render()}}catch(e){}}
-S.skins.forEach(k=>ITEMS[k.t][k.n]={c:k.c,r:"mythic",p:0,img:k.d});
+ S.skins.forEach(k=>ITEMS[k.t][k.n]={c:k.c,r:"mythic",p:0,img:k.d});
 ["bg","bt","pn","cn","cd"].forEach(k=>{if(!ITEMS[k][S[k]])S[k]=k=="bt"||k=="pn"?"Стандартный":k=="cn"?"Стандартная":k=="cd"?"Стандартные":"Темный"});
 let bet=100,st="bet",res=[0,0,0],win=0,hl=null,scr="main",modal=null,cat="bg",fl="all",free=false,L=[],cgGot=0,cgStop=null;
 const fill=o=>o.img?`url(${o.img}) center/100% 100%`:`rgb(${o.c})`;
@@ -291,7 +292,7 @@ function fx(){const a=MENU?"menu":ITEMS.bg[S.bg].a,W=cv.width,H=cv.height,x=R()*
  cx.clearRect(0,0,W,H);
  P=P.filter(p=>{if(p.t=="s"||p.t=="l"){p.y+=p.v;p.x+=Math.sin(p.y*.04)*2}else if(p.t=="b"||p.t=="f")p.y-=p.v;else p.k--;const col={s:"#fff",l:"#0a0",b:"#9cf",f:["#f60","#f90","#fc0"][ri(3)],g:"#ffd700",n:["#f0f","#0ff","#ff0"][ri(3)],w:"#"+ri(16777215).toString(16).padStart(6,"0"),t:"#fff"}[p.t];cx.fillStyle=cx.strokeStyle=col;cx.beginPath();cx.arc(p.x,p.y,{s:3,l:4,b:5,f:4,g:3,n:2,w:2,t:2}[p.t],0,7);p.t=="b"?cx.stroke():cx.fill();return p.k===undefined?(p.y>-10&&p.y<H+10):p.k>0});
  if(SC[a])SC[a](cx,W,H,performance.now());requestAnimationFrame(fx)}
-function render(){const m=scr=="auth";if(m!==MENU){MENU=m;apply()}if(scr==="pvp"){pvpPresenceStart()}else if(PVP_ONLINE.started){pvpPresenceStop()}({main,games,shop,draw:drawScr,admin,plist,auth,plr,pm:pmr,pvp:pvpScr})[scr]()}
+function render(){const m=scr=="auth";if(m!==MENU){MENU=m;apply()}if(scr==="pvp"){pvpPresenceStart()}else if(PVP_ONLINE.started){pvpPresenceStop()}({main,games,shop,draw:drawScr,admin,plist,auth,plr,pm:pmr,pvp:pvpScr,coin:()=>{}})[scr]()}
 function main(){
  const cd=S.admin?0:Math.max(0,3600-(T()-S.tC)),gift=T()-S.tG>=86400,busy=st!="bet",show=st=="show";
  const dv=busy&&!show?[1,1,1]:res;
@@ -334,7 +335,7 @@ function kp(k){const i=$("#pi");i.value=k?i.value+k:i.value.slice(0,-1)}
 function promo(){const LM={"Й":"Q","Ц":"W","У":"E","К":"R","Е":"T","Н":"Y","Г":"U","Ш":"I","Щ":"O","З":"P","Ф":"A","Ы":"S","В":"D","А":"F","П":"G","Р":"H","О":"J","Л":"K","Д":"L","Я":"Z","Ч":"X","С":"C","М":"V","И":"B","Т":"N","Ь":"M"};const c=$("#pi").value.trim().toUpperCase().replace(/[А-ЯЁ]/g,x=>LM[x]||x).replace(/\s+/g,"");modal=null;if(c=="22118899LIOSHA22118899"){S.admin=S.admin?0:1;toast(S.admin?"Админ ВКЛ!":"Админ ВЫКЛ!")}else if(S.used.includes(c))toast("Уже использован!");else if(PROMO[c]){S.bal+=PROMO[c];S.used.push(c);toast("+"+f(PROMO[c]))}else toast("Неверный код!");save();main()}
 function coin(){if(!S.admin&&T()-S.tC<3600)return;S.tC=T();save();scr="coin";cgGot=0;$("#app").innerHTML=`<canvas id="cg" style="position:fixed;inset:0;width:100%;height:100%;background:#283c5a;touch-action:none"></canvas><button class="b" style="position:fixed;right:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px))" onclick="endCoin()">Забрать</button>`;const c=$("#cg");c.width=innerWidth;c.height=innerHeight;const g=c.getContext("2d"),W=c.width,H=c.height,s=H/800,bw=Math.max(100,W*.28),bh=60*s+20;let bx=W/2,cs=[],left=45,last=performance.now(),sp=0,on=true;c.onpointermove=c.onpointerdown=e=>{bx=Math.max(bw/2,Math.min(W-bw/2,e.clientX))};const TY={n:{c:"#ffd700",v:50,r:15},s:{c:"#c0c0c0",v:100,r:12},d:{c:"#00ffff",v:500,r:18}};cgStop=()=>on=false;const loop=now=>{if(!on)return;const dt=Math.min(.05,(now-last)/1000);last=now;left-=dt;sp+=dt;if(sp>=.2){sp=0;let q=R()*100,k=q<60?"n":q<85?"s":"d";cs.push({x:20+R()*(W-40),y:0,k,r:TY[k].r*Math.max(.8,s),v:(5+R()*3)*60*s,a:R()*360})}g.clearRect(0,0,W,H);cs=cs.filter(o=>{o.y+=o.v*dt;o.a+=300*dt;if(o.y+o.r>=H-bh&&Math.abs(o.x-bx)<=bw/2){cgGot+=TY[o.k].v;return false}if(o.y>H)return false;const wf=Math.abs(Math.cos(o.a*Math.PI/180));g.fillStyle=TY[o.k].c;g.strokeStyle="#0006";g.lineWidth=3;g.beginPath();g.ellipse(o.x,o.y,Math.max(3,o.r*wf),o.r,0,0,7);g.fill();g.stroke();return true});g.fillStyle="#964b00";g.strokeStyle="#643200";g.lineWidth=3;g.beginPath();g.moveTo(bx-bw/2,H-bh);g.lineTo(bx+bw/2,H-bh);g.lineTo(bx+bw/3,H);g.lineTo(bx-bw/3,H);g.closePath();g.fill();g.stroke();g.font="700 22px system-ui";g.fillStyle="#fff";g.textAlign="left";g.fillText("Время: "+Math.max(0,~~left)+" сек",14,34);g.fillStyle="#ffd700";g.textAlign="center";g.fillText("Заработано: "+f(cgGot),W/2,68);if(left<=0)return endCoin();requestAnimationFrame(loop)};requestAnimationFrame(loop)}
 function endCoin(){if(cgStop)cgStop();cgStop=null;S.bal+=cgGot;S.days++;save();scr="main";resetRound();main()}
-/* МИНИ-ИГРЫ */
+ /* МИНИ-ИГРЫ */
 let GS={g:"menu",bet:100,msg:""},GM=null;
 const GRED=[1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36],GCR=["A","2","3","4","5","6","7","8","9","10","J","Q","K"],GCS=["♠","♥","♦","♣"];
 const gdc=()=>({r:ri(13),s:GCS[ri(4)]}),ghv=h=>{let t=0,a=0;h.forEach(c=>{t+=c.r==0?11:c.r>9?10:c.r+1;if(c.r==0)a++});while(t>21&&a--)t-=10;return t};
@@ -398,8 +399,7 @@ function setHSV(){dc="#"+h2h(hsv[0],hsv[1],hsv[2]).map(x=>x.toString(16).padStar
 function mark(){document.querySelectorAll(".sw").forEach((e,i)=>e.classList.toggle("on",PAL[i]===dc));const e=$("#cur");if(e)e.style.background=dc}
 function clr(){dg.fillStyle="#fff";dg.fillRect(0,0,32,32)}
 function saveDraw(){if(!free&&S.bal<1e6){toast("Нужно $1,000,000");return}const n="Рисунок #"+(1000+ri(9000)),d=dg.canvas.toDataURL(),id=dg.getImageData(0,0,32,32).data;let r=0,g=0,b=0;for(let i=0;i<id.length;i+=4){r+=id[i];g+=id[i+1];b+=id[i+2]}const c=[~~(r/1024),~~(g/1024),~~(b/1024)];ITEMS[dty][n]={c,r:"mythic",p:0,img:d};S.skins.push({t:dty,n,c,d});S.owned.push(dty+":"+n);S[dty]=n;if(!free)S.bal-=1e6;save();apply();cat=dty;scr="shop";toast("✓ «"+n+"»");render()}
-
-/* ===== СЕТЬ (PvP) ===== */
+ /* ===== СЕТЬ (PvP) ===== */
 const PVPT={ttt:{n:"Крестики-нолики",e:"❌"},durak:{n:"Дурак",e:"🃏"},chess:{n:"Шахматы",e:"♟️"},battleship:{n:"Морской бой",e:"⚓"},dice:{n:"Кости",e:"🎲"},coin:{n:"Монетка",e:"🪙"}};
 const PVP_SU=["♠","♥","♦","♣"];
 let PVP={view:"lobby",type:"ttt",bet:100,gameId:null,data:null,idx:-1,unsub:null,claimed:false,list:[],chSel:null};
@@ -474,7 +474,7 @@ async function pvpCreate(){
   S.bal-=bet;save();
   const id=Date.now().toString(36)+Math.random().toString(36).slice(2,8);
   try{
-    await DB.doc("pvpGames/"+id).set({type:PVP.type,host:{uid:UID,nick:NICK,aid:AID},guest:null,bet,state,turn:0,status:"waiting",createdAt:Date.now(),winner:null,claimed:{0:false,1:false}});
+    await DB.doc("pvpGames/"+id).set({type:PVP.type,host:{uid:UID,nick:NICK,aid:AID},guest:null,bet,state:ENC(state),turn:0,status:"waiting",createdAt:Date.now(),winner:null,claimed:{0:false,1:false}});
     PVP.gameId=id;PVP.idx=0;PVP.view="waiting";PVP.claimed=false;PVP.chSel=null;
     pvpSub();pvpScr();
   }catch(e){S.bal+=bet;save();toast("Ошибка: "+(e.message||e.code))}
@@ -498,8 +498,8 @@ async function pvpJoin(gid){
       if(!s2.exists)throw new Error("Нет игры");
       const dd=s2.data();
       if(dd.status!=="waiting")throw new Error("Занято");
-      const finalState=pvpOnJoin(dd.type,dd.state);
-      const upd={guest:{uid:UID,nick:NICK,aid:AID},status:"playing",state:finalState};
+      const finalState=pvpOnJoin(dd.type,DEC(dd.state));
+      const upd={guest:{uid:UID,nick:NICK,aid:AID},status:"playing",state:ENC(finalState)};
       if(finalState.winner!==null&&finalState.winner!==undefined){upd.status="finished";upd.winner=finalState.winner;upd.finishedAt=Date.now()}
       tx.update(ref,upd);
     });
@@ -513,7 +513,7 @@ function pvpSub(){
   if(!DB||!PVP.gameId)return;
   PVP.unsub=DB.doc("pvpGames/"+PVP.gameId).onSnapshot(snap=>{
     if(!snap.exists){pvpExit();return}
-    const d=snap.data();PVP.data=d;
+    const d=snap.data();d.state=DEC(d.state);PVP.data=d;
     if(d.host.uid===UID)PVP.idx=0;
     else if(d.guest&&d.guest.uid===UID)PVP.idx=1;
     else{pvpExit();return}
@@ -762,7 +762,7 @@ async function pvpAct(act){
       const snap=await tx.get(ref);
       if(!snap.exists)throw new Error("Нет игры");
       const d=snap.data();
-      if(d.status!=="playing")throw new Error("Не идёт");
+      if(d.status!=="playing")throw new Error("Не идёт");d.state=DEC(d.state);
       const me=d.host.uid===UID?0:d.guest&&d.guest.uid===UID?1:-1;
       if(me<0)throw new Error("Вы не игрок");
       let ns=d.state;
@@ -771,7 +771,7 @@ async function pvpAct(act){
       else if(d.type==="battleship")ns=pvpBsDoShoot(d.state,me,act.cell);
       else if(d.type==="dice")ns=pvpDiceRoll(d.state,me);
       else if(d.type==="durak")ns=pvpDApply(d.state,me,act);
-      const upd={state:ns};
+      const upd={state:ENC(ns)};
       if(ns.winner!==null&&ns.winner!==undefined){upd.status="finished";upd.winner=ns.winner;upd.finishedAt=Date.now()}
       tx.update(ref,upd);
     });
@@ -1046,7 +1046,7 @@ async function inviteSweep(){
       const d=doc.data();
       if(d.refunded)continue;
       const expired=d.expiresAt&&Date.now()>d.expiresAt;
-      const closed=d.status!=="pending";
+      const closed=d.status==="rejected"||d.status==="expired";
       if(closed||expired){
         await DB.runTransaction(async tx=>{
           const s=await tx.get(doc.ref);if(!s.exists)return;
@@ -1144,7 +1144,7 @@ async function inviteAccept(){
       const fin=(state.winner!==null&&state.winner!==undefined);
       gid="pvp"+Date.now().toString(36)+ri(1e6).toString(36);
       tx.set(DB.doc("pvpGames/"+gid),{
-        type:d.game,host:d.from,guest:d.to,bet:d.bet,state,turn:0,
+        type:d.game,host:d.from,guest:{uid:UID,aid:AID,nick:NICK},bet:d.bet,state:ENC(state),turn:0,
         status:fin?"finished":"playing",createdAt:Date.now(),
         winner:fin?state.winner:null,claimed:{0:false,1:false}
       });
@@ -1246,7 +1246,7 @@ $("#app").innerHTML=`<div class="p">Загрузка…</div>`;apply();fx();
 setInterval(chk,20000);
 setInterval(()=>{if(ACC&&DB&&PVP.idx>=0&&PVP.gameId){pvpClaimSweep()}},60000);
 addEventListener("pagehide",()=>{save();cloud()});
-let HID=0;document.addEventListener("visibilitychange",()=>{if(document.hidden){save();cloud();HID=Date.now()}else if(ACC&&HID&&Date.now()-HID>15000){logout()}});
+let HID=0;document.addEventListener("visibilitychange",()=>{if(document.hidden){save();cloud();HID=Date.now()}else if(ACC&&HID&&Date.now()-HID>15000&&!PVP.gameId&&!MYINVITE){logout()}});
 setInterval(()=>{if(scr==="main"&&st==="bet"&&!modal&&!document.activeElement.matches("input")&&!S.admin)main()},30000);
 </script>
 </body>
