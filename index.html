@@ -992,6 +992,367 @@ setInterval(chk,20000);
 addEventListener("pagehide",()=>{save();cloud()});
 let HID=0;document.addEventListener("visibilitychange",()=>{if(document.hidden){save();cloud();HID=Date.now()}else if(ACC&&HID&&Date.now()-HID>15000){logout()}});
 setInterval(()=>{if(scr==="main"&&st==="bet"&&!modal&&!document.activeElement.matches("input")&&!S.admin)main()},30000);
+const NG={
+ ttt:{n:"❌⭕ Крестики-нолики",i:()=>({b:"---------",t:0})},
+ rps:{n:"✊ Камень-ножницы-бумага",i:()=>({p0:-1,p1:-1,a:0,c:0,l:""})},
+ pen:{n:"⚽ Пенальти-дуэль",i:()=>({p0:-1,p1:-1,a:0,c:0,n:0,l:""})}};
+let NR=null,NRD=null,NU=null,NW=null,NL=[],NB=100,NSel="ttt";
+const nMe=()=>NRD.h.id==AID?0:1,nRef=id=>DB.collection("rooms").doc(id||NR);
+const nUnsub=()=>{if(NU)NU();NU=null};
+const _g=games;games=function(){if(GS.g=="net")return netScr();if(NW)NW();NW=null;_g()};
+const _lo=logout;logout=function(){nUnsub();if(NW)NW();NW=null;NR=null;NRD=null;_lo()};
+
+function nWatch(){if(NW||!DB)return;
+ NW=DB.collection("rooms").where("st","==","wait").onSnapshot(q=>{NL=q.docs.map(d=>({id:d.id,...d.data()}));nList()},()=>{})}
+function nList(){const e=$("#nl");if(!e)return;
+ const a=NL.filter(x=>NG[x.g]).sort((p,q)=>q.t-p.t);
+ e.innerHTML=`<div style="font-weight:700;margin-bottom:6px">Открытые комнаты</div>`+(a.map(x=>`<div class="pl" style="background:#283c28;align-items:center;gap:6px"><span>${NG[x.g].n}<br><span style="font-size:12px">${esc(x.h.n)}</span></span><span style="color:#ffdc64">${f(x.bet)}</span><button class="b s k" style="flex:0 0 auto" onclick="nJoin('${x.id}')" ${x.h.id==AID?"disabled":""}>Войти</button></div>`).join("")||"Пока пусто — создайте свою")}
+
+function netScr(){
+ if(!DB){$("#app").innerHTML=`<div class="p">Нет связи с сервером</div><button class="b g" onclick="gGo('menu')">Назад</button>`;return}
+ if(!NR&&S.nr)nOpen(S.nr);
+ if(NR)return nRoom();
+ nWatch();
+ $("#app").innerHTML=`<div class="p big">🌐 Сеть</div><div class="p">Баланс: ${f(S.bal)}</div>
+ <div class="p" style="display:flex;flex-direction:column;gap:8px"><div style="font-size:14px">Ставка (комиссия 5%)</div>
+ <input id="nb" type="number" inputmode="numeric" min="1" value="${NB}" style="letter-spacing:0" oninput="NB=Math.floor(this.value)||1">
+ ${Object.keys(NG).map(k=>`<button class="b s ${k==NSel?"k":"g"}" onclick="NSel='${k}';netScr()">${NG[k].n}</button>`).join("")}
+ <button class="b" onclick="nCreate()">Создать комнату</button></div>
+ <div class="p" id="nl"></div><button class="b g" onclick="gGo('menu')">Назад</button>`;nList()}
+
+async function nCreate(){const b=Math.floor(NB);
+ if(S.nr)return toast("Вы уже в комнате");if(b<1||b>S.bal)return toast("Ставка больше баланса");
+ const r=DB.collection("rooms").doc();S.bal-=b;S.nr=r.id;save();
+ try{await r.set({g:NSel,bet:b,st:"wait",h:{id:AID,n:NICK},u:null,s:NG[NSel].i(),w:null,t:Date.now()})}
+ catch(e){S.bal+=b;S.nr=null;save();return toast("Ошибка сети")}
+ nOpen(r.id)}
+
+async function nJoin(id){if(S.nr)return toast("Вы уже в комнате");
+ const x=NL.find(v=>v.id==id);if(!x||x.bet>S.bal)return toast("Не хватает денег");
+ try{await DB.runTransaction(async t=>{const d=await t.get(nRef(id)),y=d.data();
+  if(!d.exists||y.st!="wait"||y.h.id==AID)throw 0;t.update(nRef(id),{st:"play",u:{id:AID,n:NICK}})})}
+ catch(e){return toast("Комната занята")}
+ S.bal-=x.bet;S.nr=id;save();nOpen(id)}
+
+function nOpen(id){NR=id;NRD=null;nUnsub();
+ NU=nRef(id).onSnapshot(d=>{if(!d.exists){if(S.nr==id){S.nr=null;save()}NR=null;NRD=null;nUnsub();if(GS.g=="net")netScr();return}
+  NRD=d.data();nTick();if(GS.g=="net")netScr()},()=>{})}
+
+function nTick(){const x=NRD,s=x.s;
+ if(x.st=="play"&&nMe()==0&&s.p0>=0&&s.p1>=0)nRes(x);
+ if(x.st=="done"&&S.nr==NR){const me=nMe();let t="";
+  if(x.w=="d"){S.bal+=x.bet;t="Ничья, ставка возвращена"}
+  else if(x.w==me){const w=Math.floor(x.bet*1.9);S.bal+=w;t="🏆 +"+f(w)}else t="Поражение −"+f(x.bet);
+  S.nr=null;save();toast(t)}}
+
+function nRes(x){const s=x.s,o={"s.p0":-1,"s.p1":-1};
+ if(x.g=="rps"){const E=["✊","✋","✌️"],d=(s.p0-s.p1+3)%3;let a=s.a,c=s.c;if(d==1)a++;else if(d==2)c++;
+  o["s.a"]=a;o["s.c"]=c;o["s.l"]=E[s.p0]+" vs "+E[s.p1]+(d?"":" — ничья, переигровка");
+  if(a>=2||c>=2){o.st="done";o.w=a>c?0:1}}
+ else if(x.g=="pen"){const sh=s.n%2,goal=s.p0!=s.p1,n=s.n+1;let a=s.a,c=s.c;
+  if(goal){if(sh)c++;else a++}
+  o["s.a"]=a;o["s.c"]=c;o["s.n"]=n;o["s.l"]=(sh?x.u.n:x.h.n)+": "+(goal?"ГОЛ!":"сэйв!");
+  if((n>=6&&n%2==0&&a!=c)||n>=10){o.st="done";o.w=a>c?0:a<c?1:"d"}}
+ nRef().update(o)}
+
+function nPick(v){const x=NRD,me=nMe();if(x.st!="play"||x.s["p"+me]>=0)return;nRef().update({["s.p"+me]:v})}
+function nTtt(i){const x=NRD,s=x.s,me=nMe();if(x.st!="play"||s.t!=me||s.b[i]!="-")return;
+ const m="XO"[me],b=s.b.slice(0,i)+m+s.b.slice(i+1),o={"s.b":b,"s.t":1-me};
+ const W=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+ if(W.some(l=>l.every(k=>b[k]==m))){o.st="done";o.w=me}else if(!b.includes("-")){o.st="done";o.w="d"}
+ nRef().update(o)}
+
+async function nQuit(){const x=NRD,me=nMe();
+ if(x.st=="wait"){try{await DB.runTransaction(async t=>{const d=await t.get(nRef()),y=d.data();
+   if(y.st!="wait")throw 0;t.delete(nRef())});S.bal+=x.bet;S.nr=null;save();NR=null;nUnsub();netScr()}catch(e){toast("Соперник уже вошёл")}}
+ else if(x.st=="play")nRef().update({st:"done",w:1-me})
+ else{NR=null;NRD=null;nUnsub();netScr()}}
+
+function nRoom(){const x=NRD;
+ if(!x){$("#app").innerHTML=`<div class="p">Загрузка…</div>`;return}
+ const me=nMe(),s=x.s,g=x.g,pl=[x.h,x.u||{n:"…"}],pp=x.st=="play",dn=x.st=="done";
+ let st=x.st=="wait"?"⏳ Ждём соперника…":dn?(x.w=="d"?"Ничья":x.w==me?"🏆 Победа! +"+f(Math.floor(x.bet*1.9)):"Поражение"):"";
+ let h="";
+ if(g=="ttt"){if(pp)st=s.t==me?"Ваш ход ("+"XO"[me]+")":"Ход соперника";
+  h=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">${[...s.b].map((c,i)=>`<button class="b" style="font-size:36px;padding:16px 0;${c=="X"?"color:#f66":"color:#6cf"}" onclick="nTtt(${i})" ${pp&&s.t==me&&c=="-"?"":"disabled"}>${c=="-"?"·":c}</button>`).join("")}</div>`}
+ else{const my=s["p"+me]>=0,sh=s.n%2==me;
+  if(g=="rps"){h=`<div class="p">Счёт: ${s.a} : ${s.c} (до 2)</div><div class="row">${["✊","✋","✌️"].map((e,i)=>`<button class="b" style="font-size:32px" onclick="nPick(${i})" ${pp&&!my?"":"disabled"}>${e}</button>`).join("")}</div>`}
+  else{h=`<div class="p">Счёт: ${s.a} : ${s.c} · удар ${s.n+1}/6<br>${pp?(sh?"🥅 Вы бьёте — выберите угол":"🧤 Вы вратарь — угадайте угол"):""}</div><div class="row">${["⬅️ Лево","⬆️ Центр","➡️ Право"].map((e,i)=>`<button class="b" onclick="nPick(${i})" ${pp&&!my?"":"disabled"}>${e}</button>`).join("")}</div>`}
+  if(pp&&my)st="Ждём соперника…";
+  if(s.l)h+=`<div class="p">${esc(s.l)}</div>`}
+ $("#app").innerHTML=`<div class="p big">${NG[g].n}</div>
+ <div class="p">${esc(pl[0].n)} vs ${esc(pl[1].n)}<br>Ставка: ${f(x.bet)} · Баланс: ${f(S.bal)}</div>
+ ${st?`<div class="p big ${dn?(x.w=="d"?"":x.w==me?"win":"lose"):""}">${st}</div>`:""}${h}
+ <button class="b ${dn?"":"r"}" onclick="nQuit()">${x.st=="wait"?"Отмена":pp?"Сдаться":"В лобби"}</button>`}
+
+
+function nFleet(){const g=Array(64).fill(0);
+ for(const L of[4,3,3,2,2])for(;;){const v=ri(2),x=ri(v?8:9-L),y=ri(v?9-L:8),c=[...Array(L)].map((_,k)=>(y+(v?k:0))*8+x+(v?0:k));
+  const ok=c.every(k=>{const r=k>>3,q=k&7;for(let a=-1;a<2;a++)for(let b=-1;b<2;b++){const R=r+a,Q=q+b;if(R>=0&&R<8&&Q>=0&&Q<8&&g[R*8+Q])return false}return true});
+  if(ok){c.forEach(k=>g[k]=1);break}}
+ return g.join("")}
+NG.bs={n:"⚓ Морской бой",i:()=>({f0:nFleet(),f1:nFleet(),s0:"-".repeat(64),s1:"-".repeat(64),t:0,l:""})};
+const _nr=nRoom;nRoom=function(){if(NRD&&NRD.g=="bs")return nBs();_nr()};
+
+function nBsShot(i){const x=NRD,s=x.s,me=nMe();if(x.st!="play"||s.t!=me||s["s"+me][i]!="-")return;
+ const e=s["f"+(1-me)],hit=e[i]=="1",sh=s["s"+me].slice(0,i)+(hit?"x":"o")+s["s"+me].slice(i+1),
+ o={["s.s"+me]:sh,"s.l":(me?x.u.n:x.h.n)+": "+(hit?"попал! ходит ещё":"мимо")};
+ if(hit){if([...sh].filter(c=>c=="x").length==[...e].filter(c=>c=="1").length){o.st="done";o.w=me}}else o["s.t"]=1-me;
+ nRef().update(o)}
+
+function nBs(){const x=NRD;if(!x){$("#app").innerHTML=`<div class="p">Загрузка…</div>`;return}
+ const s=x.s,me=nMe(),pp=x.st=="play",dn=x.st=="done",pl=[x.h,x.u||{n:"…"}];
+ let st=x.st=="wait"?"⏳ Ждём соперника…":dn?(x.w==me?"🏆 Победа! +"+f(Math.floor(x.bet*1.9)):"Поражение"):(s.t==me?"Ваш выстрел":"Стреляет соперник");
+ const grid=(fl,sh,click)=>`<div style="display:grid;grid-template-columns:repeat(8,1fr);gap:2px">${[...sh].map((c,i)=>`<button class="b" style="padding:0;aspect-ratio:1;font-size:14px;background:${c=="x"?"#c22":c=="o"?"#456":fl&&fl[i]=="1"?"#3a8a3a":"#1c3a5a"}" ${click&&pp&&s.t==me&&c=="-"?`onclick="nBsShot(${i})"`:"disabled"}>${c=="x"?"💥":c=="o"?"•":""}</button>`).join("")}</div>`;
+ $("#app").innerHTML=`<div class="p big">${NG.bs.n}</div>
+ <div class="p">${esc(pl[0].n)} vs ${esc(pl[1].n)}<br>Ставка: ${f(x.bet)} · Баланс: ${f(S.bal)}</div>
+ <div class="p big ${dn?(x.w==me?"win":"lose"):""}">${st}</div>
+ <div class="p"><div style="font-size:14px;margin-bottom:6px">Поле соперника (жмите)</div>${grid(null,s["s"+me],1)}</div>
+ <div class="p"><div style="font-size:14px;margin-bottom:6px">Ваше поле</div>${grid(s["f"+me],s["s"+(1-me)],0)}</div>
+ ${s.l?`<div class="p">${esc(s.l)}</div>`:""}
+ <button class="b ${dn?"":"r"}" onclick="nQuit()">${x.st=="wait"?"Отмена":pp?"Сдаться":"В лобби"}</button>`}
+
+/* ===== СЕТЬ ЧАСТЬ 3: комнаты 2–4 игрока + Блэкджек (очко 21). Вставить после net-games-2.js ===== */
+let MR=null,MRD=null,MU=null,MW=null,ML=[];
+const mRef=id=>DB.collection("mrooms").doc(id||MR),mUnsub=()=>{if(MU)MU();MU=null};
+const nv=a=>{let t=0,n=0;a.forEach(c=>{const r=c%13;t+=r==0?11:r>9?10:r+1;if(r==0)n++});while(t>21&&n--)t-=10;return t};
+const MG={bj:"🃏 Очко 21 (2–4)"};
+
+/* защита от одновременного участия в двух типах комнат */
+const _nc=nCreate;nCreate=function(){if(S.mr)return toast("Вы уже в комнате");return _nc()};
+const _nj=nJoin;nJoin=function(id){if(S.mr)return toast("Вы уже в комнате");return _nj(id)};
+const _g2=games;games=function(){if(GS.g!="net"&&MW){MW();MW=null}_g2()};
+const _lo2=logout;logout=function(){mUnsub();if(MW)MW();MW=null;MR=null;MRD=null;_lo2()};
+
+/* лобби: добавляем блок под основным */
+const _ns=netScr;netScr=function(){
+ if(DB&&!MR&&S.mr&&!NR)mOpen(S.mr);
+ if(MR)return mRoom();
+ _ns();
+ if(DB&&!NR&&$("#nl")){
+  if(!MW)MW=DB.collection("mrooms").where("st","==","wait").onSnapshot(q=>{ML=q.docs.map(d=>({id:d.id,...d.data()}));mList()},()=>{});
+  const a=document.createElement("div");a.className="p";a.style.cssText="display:flex;flex-direction:column;gap:8px";
+  a.innerHTML=`<div style="font-weight:700">Игры на 2–4 игрока</div><button class="b s" onclick="mCreate('bj')">${MG.bj}: создать (ставка выше)</button><div id="mll"></div>`;
+  $("#app").insertBefore(a,$("#app").lastElementChild);mList()}};
+function mList(){const e=$("#mll");if(!e)return;
+ e.innerHTML=ML.filter(x=>MG[x.g]).sort((p,q)=>q.t-p.t).map(x=>`<div class="pl" style="background:#283c28;align-items:center;gap:6px"><span>${MG[x.g]}<br><span style="font-size:12px">${x.pl.map(p=>esc(p.n)).join(", ")} (${x.pl.length}/${x.max})</span></span><span style="color:#ffdc64">${f(x.bet)}</span><button class="b s k" style="flex:0 0 auto" onclick="mJoin('${x.id}')" ${x.pl.some(p=>p.id==AID)||x.pl.length>=x.max?"disabled":""}>Войти</button></div>`).join("")||`<div style="font-size:14px">Комнат нет</div>`}
+
+async function mCreate(g){const b=Math.floor(NB);
+ if(S.nr||S.mr)return toast("Вы уже в комнате");if(b<1||b>S.bal)return toast("Ставка больше баланса");
+ const r=DB.collection("mrooms").doc();S.bal-=b;S.mr=r.id;save();
+ try{await r.set({g,bet:b,max:4,st:"wait",h:AID,pl:[{id:AID,n:NICK}],s:{},pay:null,t:Date.now()})}
+ catch(e){S.bal+=b;S.mr=null;save();return toast("Ошибка сети")}
+ mOpen(r.id)}
+async function mJoin(id){if(S.nr||S.mr)return toast("Вы уже в комнате");
+ const x=ML.find(v=>v.id==id);if(!x||x.bet>S.bal)return toast("Не хватает денег");
+ try{await DB.runTransaction(async t=>{const d=await t.get(mRef(id)),y=d.data();
+  if(!d.exists||y.st!="wait"||y.pl.length>=y.max||y.pl.some(p=>p.id==AID))throw 0;
+  t.update(mRef(id),{pl:[...y.pl,{id:AID,n:NICK}]})})}catch(e){return toast("Нельзя войти")}
+ S.bal-=x.bet;S.mr=id;save();mOpen(id)}
+function mOpen(id){MR=id;MRD=null;mUnsub();
+ MU=mRef(id).onSnapshot(d=>{
+  if(!d.exists){if(S.mr==id){S.mr=null;save()}MR=null;MRD=null;mUnsub();if(GS.g=="net")netScr();return}
+  MRD=d.data();const x=MRD;
+  if(x.st=="done"&&S.mr==MR){const w=(x.pay&&x.pay[AID])||0;S.bal+=w;S.mr=null;save();toast(w?"🏆 +"+f(w):"Проигрыш −"+f(x.bet))}
+  if(GS.g=="net")netScr()},()=>{})}
+
+
+function mCheck(x,s,o){
+ if(!x.pl.every(p=>s.f[p.id]))return;
+ const ok=x.pl.filter(p=>s.f[p.id]==1).map(p=>({id:p.id,v:nv(s.h[p.id])})),pay={};
+ if(!ok.length)x.pl.forEach(p=>pay[p.id]=x.bet);
+ else{const m=Math.max(...ok.map(q=>q.v)),w=ok.filter(q=>q.v==m),g=Math.floor(x.bet*x.pl.length*.95/w.length);w.forEach(q=>pay[q.id]=g)}
+ o.st="done";o.pay=pay}
+async function mStart(){
+ try{await DB.runTransaction(async t=>{const d=await t.get(mRef()),x=d.data();
+  if(x.h!=AID||x.st!="wait"||x.pl.length<2)throw 0;
+  const dk=[...Array(52).keys()].sort(()=>R()-.5),h={},fl={};let i=0;
+  x.pl.forEach(p=>{h[p.id]=[dk[i++],dk[i++]];fl[p.id]=nv(h[p.id])==21?1:0});
+  const s={d:dk,i,h,f:fl},o={st:"play",s};mCheck(x,s,o);t.update(mRef(),o)})}catch(e){toast("Нужно минимум 2 игрока")}}
+async function mAct(hit){
+ try{await DB.runTransaction(async t=>{const d=await t.get(mRef()),x=d.data(),s=x.s;
+  if(x.st!="play"||s.f[AID])throw 0;
+  const h=[...s.h[AID]];let fs=1;
+  if(hit){h.push(s.d[s.i]);s.i++;const v=nv(h);fs=v>21?2:v==21?1:0}
+  s.h[AID]=h;s.f[AID]=fs;const o={s};mCheck(x,s,o);t.update(mRef(),o)})}catch(e){}}
+async function mQuit(){const x=MRD;
+ if(x.st=="done"){MR=null;MRD=null;mUnsub();netScr();return}
+ try{await DB.runTransaction(async t=>{const d=await t.get(mRef()),y=d.data();
+  if(y.st=="wait"){const pl=y.pl.filter(p=>p.id!=AID);if(!pl.length)t.delete(mRef());else t.update(mRef(),{pl,h:y.h==AID?pl[0].id:y.h});return}
+  const s=y.s;if(s.f[AID])throw 0;s.f[AID]=3;const o={s};mCheck(y,s,o);t.update(mRef(),o);return 1})
+  .then(()=>{});
+  if(x.st=="wait"){S.bal+=x.bet;S.mr=null;save();MR=null;MRD=null;mUnsub();netScr()}}
+ catch(e){toast("Дождитесь конца раунда")}}
+
+function mRoom(){const x=MRD;
+ if(!x){$("#app").innerHTML=`<div class="p">Загрузка…</div>`;return}
+ const s=x.s||{},pp=x.st=="play",dn=x.st=="done",wt=x.st=="wait",host=x.h==AID,my=pp&&s.f[AID];
+ const rows=x.pl.map(p=>{const hd=(s.h&&s.h[p.id])||[],me=p.id==AID,show=me||dn,fs=s.f?s.f[p.id]:0;
+  return `<div class="p" style="${me?"border-color:#ff0":""}"><div style="font-weight:700">${esc(p.n)}${me?" (вы)":""}${dn?" · "+nv(hd)+(fs>=2?" ✗":""):pp?(fs?" · готов":" · думает…"):""}${dn&&x.pay&&x.pay[p.id]?" · +"+f(x.pay[p.id]):""}</div>${hd.map(c=>show?gCard({r:c%13,s:GCS[c/13|0]}):gCard(null,1)).join("")}${me&&hd.length&&!dn?`<div style="font-size:14px">Очки: ${nv(hd)}</div>`:""}</div>`}).join("");
+ const st=wt?"⏳ Ждём игроков ("+x.pl.length+"/"+x.max+")":dn?((x.pay&&x.pay[AID])?"🏆 +"+f(x.pay[AID]):"Проигрыш"):my?"Ждём остальных…":"Ваш ход";
+ $("#app").innerHTML=`<div class="p big">${MG[x.g]}</div><div class="p">Банк: ${f(x.bet*x.pl.length)} · ставка ${f(x.bet)} · баланс ${f(S.bal)}</div>
+ <div class="p big ${dn?(x.pay&&x.pay[AID]?"win":"lose"):""}">${st}</div>${rows}
+ ${pp&&!my?`<div class="row"><button class="b" onclick="mAct(1)">Взять</button><button class="b k" onclick="mAct(0)">Хватит</button></div>`:""}
+ ${wt&&host?`<button class="b k" onclick="mStart()" ${x.pl.length<2?"disabled":""}>▶ Старт</button>`:""}
+ <button class="b ${dn?"":"r"}" onclick="mQuit()">${wt?"Выйти":pp?"Сдаться":"В лобби"}</button>`}
+
+
+const CH={sel:null},CHG={K:"♚",Q:"♛",R:"♜",B:"♝",N:"♞",P:"♟"};
+NG.ch={n:"♟ Шахматы",i:()=>({b:"rnbqkbnrpppppppp"+"-".repeat(32)+"PPPPPPPPRNBQKBNR",t:0,cs:"KQkq",l:""})};
+const _nr2=nRoom;nRoom=function(){if(NRD&&NRD.g=="ch")return nCh();_nr2()};
+const chW=p=>p!="-"&&p==p.toUpperCase();
+function chPs(b,i,cs,att){const p=b[i],w=chW(p),q=p.toUpperCase(),r=i>>3,c=i&7,o=[];
+ const add=(R,C)=>{if(R<0||R>7||C<0||C>7)return 0;const t=b[R*8+C];if(t!="-"&&chW(t)==w)return 0;o.push(R*8+C);return t=="-"};
+ const ray=d=>d.forEach(([a,e])=>{for(let k=1;add(r+a*k,c+e*k);k++);});
+ const D=[[1,0],[-1,0],[0,1],[0,-1]],G=[[1,1],[1,-1],[-1,1],[-1,-1]];
+ if(q=="N")[[1,2],[2,1],[-1,2],[-2,1],[1,-2],[2,-1],[-1,-2],[-2,-1]].forEach(([a,e])=>add(r+a,c+e));
+ else if(q=="R")ray(D);else if(q=="B")ray(G);else if(q=="Q")ray(D.concat(G));
+ else if(q=="K"){G.concat(D).forEach(([a,e])=>add(r+a,c+e));
+  if(!att){const h=w?56:0,k=w?["K","Q"]:["k","q"];
+   if(i==h+4){if(cs.includes(k[0])&&b[h+5]=="-"&&b[h+6]=="-")o.push(h+6);if(cs.includes(k[1])&&b[h+1]=="-"&&b[h+2]=="-"&&b[h+3]=="-")o.push(h+2)}}}
+ else{const d=w?-1:1;
+  for(const e of[-1,1]){const R=r+d,C=c+e;if(R>=0&&R<8&&C>=0&&C<8){const t=b[R*8+C];if(att||(t!="-"&&chW(t)!=w))o.push(R*8+C)}}
+  if(!att){const R=r+d;if(R>=0&&R<8&&b[R*8+c]=="-"){o.push(R*8+c);if(r==(w?6:1)&&b[(r+2*d)*8+c]=="-")o.push((r+2*d)*8+c)}}}
+ return o}
+const chAtk=(b,sq,byW)=>{for(let i=0;i<64;i++){const p=b[i];if(p!="-"&&chW(p)==byW&&chPs(b,i,"",1).includes(sq))return true}return false};
+function chApply(b,f,t){const a=[...b],p=a[f];a[t]=p;a[f]="-";
+ if(p.toUpperCase()=="K"&&Math.abs(t-f)==2){const h=f&~7;if(t>f){a[h+5]=a[h+7];a[h+7]="-"}else{a[h+3]=a[h];a[h]="-"}}
+ if(p=="P"&&t<8)a[t]="Q";if(p=="p"&&t>55)a[t]="q";return a.join("")}
+function chLegal(b,i,cs){const p=b[i],w=chW(p),k=w?"K":"k";
+ return chPs(b,i,cs).filter(t=>{
+  if(p.toUpperCase()=="K"&&Math.abs(t-i)==2&&(chAtk(b,i,!w)||chAtk(b,(i+t)/2,!w)))return false;
+  const nb=chApply(b,i,t);return !chAtk(nb,nb.indexOf(k),!w)})}
+const chAny=(b,w,cs)=>{for(let i=0;i<64;i++){const p=b[i];if(p!="-"&&chW(p)==w&&chLegal(b,i,cs).length)return true}return false};
+
+function nChClick(i){const x=NRD,s=x.s,me=nMe();if(x.st!="play"||s.t!=me)return;const p=s.b[i];
+ if(p!="-"&&chW(p)==(me==0)){CH.sel=i;nCh();return}
+ if(CH.sel==null||!chLegal(s.b,CH.sel,s.cs).includes(i))return;
+ const f=CH.sel,nb=chApply(s.b,f,i),M={60:"KQ",63:"K",56:"Q",4:"kq",7:"k",0:"q"};let cs=s.cs;
+ [f,i].forEach(k=>{if(M[k])for(const c of M[k])cs=cs.replace(c,"")});
+ const sq=n=>"abcdefgh"[n&7]+(8-(n>>3)),o={"s.b":nb,"s.t":1-me,"s.cs":cs,"s.l":(me?x.u.n:x.h.n)+": "+sq(f)+"→"+sq(i)};CH.sel=null;
+ if(!chAny(nb,me==1,cs)){o.st="done";o.w=chAtk(nb,nb.indexOf(me?"K":"k"),me==0)?me:"d"}
+ nRef().update(o)}
+
+function nCh(){const x=NRD;if(!x){$("#app").innerHTML=`<div class="p">Загрузка…</div>`;return}
+ const s=x.s,me=nMe(),pp=x.st=="play",dn=x.st=="done",pl=[x.h,x.u||{n:"…"}];
+ const lg=pp&&CH.sel!=null&&s.t==me?chLegal(s.b,CH.sel,s.cs):[],chk=pp&&chAtk(s.b,s.b.indexOf(s.t?"k":"K"),s.t==0);
+ const st=x.st=="wait"?"⏳ Ждём соперника…":dn?(x.w=="d"?"Пат — ничья":x.w==me?"🏆 Мат! +"+f(Math.floor(x.bet*1.9)):"Вам мат"):(s.t==me?"Ваш ход":"Ход соперника")+(chk?" · ШАХ!":"");
+ let cells="";for(let n=0;n<64;n++){const i=me==1?63-n:n,p=s.b[i],dark=((i>>3)+(i&7))&1,sel=CH.sel==i,tg=lg.includes(i);
+  cells+=`<div onclick="nChClick(${i})" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:30px;background:${sel?"#cc3":tg&&p!="-"?"#c66":dark?"#769656":"#eeeed2"};color:${chW(p)?"#fff":"#111"};text-shadow:${chW(p)?"0 0 2px #000,0 0 2px #000,0 0 3px #000":"none"}">${p=="-"?(tg?`<span style="color:#3a3;font-size:20px">●</span>`:""):CHG[p.toUpperCase()]}</div>`}
+ $("#app").innerHTML=`<div class="p big">${NG.ch.n}</div><div class="p">${esc(pl[0].n)} (белые) vs ${esc(pl[1].n)} (чёрные)<br>Ставка: ${f(x.bet)} · Баланс: ${f(S.bal)}</div>
+ <div class="p big ${dn?(x.w=="d"?"":x.w==me?"win":"lose"):""}">${st}</div>
+ <div style="display:grid;grid-template-columns:repeat(8,1fr);border:3px solid #fff4;user-select:none">${cells}</div>
+ ${s.l?`<div class="p" style="font-size:14px">${esc(s.l)}</div>`:""}
+ <button class="b ${dn?"":"r"}" onclick="nQuit()">${x.st=="wait"?"Отмена":pp?"Сдаться":"В лобби"}</button>`}
+
+
+MG.du="🃏 Дурак (2–4)";
+const RM=[5,6,7,8,9,10,11,12,0];
+const _mr=mRoom;mRoom=function(){if(MRD&&MRD.g=="du")return dRoom();_mr()};
+const _ms=mStart;mStart=function(){if(MRD&&MRD.g=="du")return dStart();return _ms()};
+const _mq=mQuit;mQuit=function(){if(MRD&&MRD.g=="du"&&MRD.st=="play")return dQuit();return _mq()};
+const _ns2=netScr;netScr=function(){_ns2();const l=$("#mll");
+ if(l&&!MR&&!NR){const b=document.createElement("button");b.className="b s";b.textContent=MG.du+": создать";b.onclick=()=>mCreate("du");l.before(b)}};
+
+async function dTx(fn){try{await DB.runTransaction(async t=>{const d=await t.get(mRef()),x=d.data(),s=x.s;if(x.st!="play")throw 0;const o={s};fn(x,s,o);t.update(mRef(),o)})}catch(e){}}
+async function dStart(){try{await DB.runTransaction(async t=>{const d=await t.get(mRef()),x=d.data();if(x.h!=AID||x.st!="wait"||x.pl.length<2)throw 0;
+ const dk=[...Array(36).keys()].sort(()=>R()-.5),h={};let i=0;x.pl.forEach(p=>{h[p.id]=dk.slice(i,i+6);i+=6});
+ t.update(mRef(),{st:"play",s:{d:dk,i,h,tr:dk[35]/9|0,ta:[],td:[],a:x.pl[0].id,df:x.pl[1].id}})})}catch(e){toast("Нужно минимум 2 игрока")}}
+async function dQuit(){try{await DB.runTransaction(async t=>{const d=await t.get(mRef()),y=d.data(),n=y.pl.length,pay={};
+ if(y.st!="play")throw 0;y.pl.forEach(p=>{if(p.id!=AID)pay[p.id]=Math.floor(y.bet*n*.95/(n-1))});t.update(mRef(),{st:"done",pay})})}catch(e){}}
+
+function dRefill(x,s){const O=x.pl.map(p=>p.id),k=O.indexOf(s.a),ord=[...O.slice(k),...O.slice(0,k)].filter(id=>id!=s.df);ord.push(s.df);
+ ord.forEach(id=>{const h=s.h[id];while(h.length<6&&s.i<36)h.push(s.d[s.i++])})}
+function dNext(x,s,o,took){const O=x.pl.map(p=>p.id),al=id=>s.h[id].length>0,L=O.filter(al),
+ aft=id=>{for(let k=1;k<=O.length;k++){const c=O[(O.indexOf(id)+k)%O.length];if(al(c))return c}return null};
+ s.ta=[];s.td=[];
+ if(L.length<2){const n=O.length,pay={};if(!L.length)O.forEach(id=>pay[id]=x.bet);else O.forEach(id=>{if(id!=L[0])pay[id]=Math.floor(x.bet*n*.95/(n-1))});o.st="done";o.pay=pay;return}
+ const a=took?aft(s.df):(al(s.df)?s.df:aft(s.df));s.a=a;s.df=aft(a)}
+
+const dAtk=c=>dTx((x,s)=>{if(s.a!=AID)throw 0;const h=s.h[AID];if(!h.includes(c))throw 0;
+ const all=[...s.ta,...s.td.filter(v=>v>=0)];if(s.ta.length&&!all.some(v=>v%9==c%9))throw 0;
+ if(s.ta.length>=6||s.td.filter(v=>v<0).length>=s.h[s.df].length)throw 0;
+ h.splice(h.indexOf(c),1);s.ta.push(c);s.td.push(-1)});
+const dDef=c=>dTx((x,s)=>{if(s.df!=AID)throw 0;const h=s.h[AID];if(!h.includes(c))throw 0;
+ const k=s.td.indexOf(-1);if(k<0)throw 0;const a=s.ta[k],su=v=>v/9|0;
+ if(!((su(c)==su(a)&&c%9>a%9)||(su(c)==s.tr&&su(a)!=s.tr)))throw 0;
+ h.splice(h.indexOf(c),1);s.td[k]=c});
+const dTake=()=>dTx((x,s,o)=>{if(s.df!=AID||!s.ta.length)throw 0;s.h[AID].push(...s.ta,...s.td.filter(v=>v>=0));dRefill(x,s);dNext(x,s,o,1)});
+const dDone=()=>dTx((x,s,o)=>{if(s.a!=AID||!s.ta.length||s.td.includes(-1))throw 0;dRefill(x,s);dNext(x,s,o,0)});
+function dClick(c){const x=MRD;if(!x||x.st!="play")return;if(x.s.a==AID)dAtk(c);else if(x.s.df==AID)dDef(c)}
+
+function dRoom(){const x=MRD;if(!x){$("#app").innerHTML=`<div class="p">Загрузка…</div>`;return}
+ const s=x.s||{},pp=x.st=="play",dn=x.st=="done",wt=x.st=="wait",host=x.h==AID,hh=((s.h&&s.h[AID])||[]).slice().sort((a,b)=>a-b),
+ isA=pp&&s.a==AID,isD=pp&&s.df==AID,un=pp?s.td.filter(v=>v<0).length:0,cd=c=>gCard({r:RM[c%9],s:GCS[c/9|0]});
+ const opp=x.pl.filter(p=>p.id!=AID).map(p=>`<div class="pl" style="background:#283c28"><span>${esc(p.n)}${pp&&s.a==p.id?" ⚔":""}${pp&&s.df==p.id?" 🛡":""}</span><span>🃏 ${s.h?(s.h[p.id]||[]).length:"—"}</span></div>`).join("");
+ const table=pp?s.ta.map((a,k)=>`<span style="position:relative;display:inline-block;margin:0 14px 10px 0">${cd(a)}${s.td[k]>=0?`<span style="position:absolute;left:14px;top:12px">${cd(s.td[k])}</span>`:""}</span>`).join(""):"";
+ const st=wt?"⏳ Ждём игроков ("+x.pl.length+"/"+x.max+")":dn?((x.pay&&x.pay[AID])?"🏆 +"+f(x.pay[AID]):"Вы дурак 🤡"):isA?(un?"Ждём защиты…":s.ta.length?"Подкидывайте или «Бито»":"Ваша атака"):isD?(un?"Защищайтесь или берите":"Ждём подкидывания"):"Ждите…";
+ $("#app").innerHTML=`<div class="p big">${MG.du}</div><div class="p">Банк: ${f(x.bet*x.pl.length)} · ставка ${f(x.bet)}${pp?" · Козырь "+GCS[s.tr]+" · колода "+Math.max(0,36-s.i):""}</div>
+ <div class="p big ${dn?(x.pay&&x.pay[AID]?"win":"lose"):""}">${st}</div>${opp}
+ ${pp?`<div class="p" style="min-height:96px">${table||"Стол пуст"}</div><div class="p">${hh.map(c=>`<span onclick="dClick(${c})" style="cursor:pointer">${cd(c)}</span>`).join("")}</div>`:""}
+ ${isA&&s.ta.length&&!un?`<button class="b k" onclick="dDone()">Бито</button>`:""}${isD&&un?`<button class="b" onclick="dTake()">Беру</button>`:""}
+ ${wt&&host?`<button class="b k" onclick="mStart()" ${x.pl.length<2?"disabled":""}>▶ Старт</button>`:""}
+ <button class="b ${dn?"":"r"}" onclick="mQuit()">${wt?"Выйти":pp?"Сдаться":"В лобби"}</button>`}
+
+MG.pk="🂡 Покер (2–4)";
+const PH=["Старшая карта","Пара","Две пары","Сет","Стрит","Флеш","Фулл-хаус","Каре","Стрит-флеш"];
+const _mr3=mRoom;mRoom=function(){if(MRD&&MRD.g=="pk")return pRoom();_mr3()};
+const _ms3=mStart;mStart=function(){if(MRD&&MRD.g=="pk")return pStart();return _ms3()};
+const _mq3=mQuit;mQuit=function(){if(MRD&&MRD.g=="pk"&&MRD.st=="play")return pQuit();return _mq3()};
+const _ns3=netScr;netScr=function(){_ns3();const l=$("#mll");
+ if(l&&!MR&&!NR){const b=document.createElement("button");b.className="b s";b.textContent=MG.pk+": создать";b.onclick=()=>mCreate("pk");l.before(b)}};
+
+function r5(c){const v=c.map(x=>x%13==0?14:x%13+1).sort((a,b)=>b-a),fl=c.every(x=>(x/13|0)==(c[0]/13|0)),n={};v.forEach(x=>n[x]=(n[x]||0)+1);
+ const g=Object.keys(n).map(Number).sort((a,b)=>n[b]-n[a]||b-a),q=g.map(k=>n[k]);let st=0;
+ if(g.length==5){if(v[0]-v[4]==4)st=v[0];else if(v[0]==14&&v[1]==5)st=5}
+ const cat=st&&fl?8:q[0]==4?7:q[0]==3&&q[1]==2?6:fl?5:st?4:q[0]==3?3:q[0]==2&&q[1]==2?2:q[0]==2?1:0;
+ return[cat,...(st?[st]:g)]}
+const cmp=(a,b)=>{for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d}return 0};
+function best(c){let b=null;for(let i=0;i<c.length;i++)for(let j=i+1;j<c.length;j++){const r=r5(c.filter((_,k)=>k!=i&&k!=j));if(!b||cmp(r,b)>0)b=r}return b}
+
+async function pStart(){try{await DB.runTransaction(async t=>{const d=await t.get(mRef()),x=d.data();if(x.h!=AID||x.st!="wait"||x.pl.length<2)throw 0;
+ const dk=[...Array(52).keys()].sort(()=>R()-.5),hc={},z={};let i=0;x.pl.forEach(p=>{hc[p.id]=[dk[i++],dk[i++]];z[p.id]=0});
+ t.update(mRef(),{st:"play",s:{d:dk,i,hc,cm:[],st:0,t:x.pl[0].id,cb:0,b:{...z},tt:{...z},f:{},a:{}}})})}catch(e){toast("Нужно минимум 2 игрока")}}
+
+function pPay(x,s,o,w){const pot=x.pl.reduce((a,p)=>a+s.tt[p.id],0),g=Math.floor(pot*.95/w.length),pay={};
+ x.pl.forEach(p=>pay[p.id]=(x.bet-s.tt[p.id])+(w.includes(p.id)?g:0));o.st="done";o.pay=pay}
+function pShow(x,s,o,act){const sc={};let m=null;
+ act.forEach(id=>{sc[id]=best([...s.hc[id],...s.cm]);if(!m||cmp(sc[id],m)>0)m=sc[id]});
+ s.sd=1;s.nm={};act.forEach(id=>s.nm[id]=PH[sc[id][0]]);pPay(x,s,o,act.filter(id=>cmp(sc[id],m)==0))}
+function pAfter(x,s,o){const O=x.pl.map(p=>p.id);
+ for(;;){const act=O.filter(id=>!s.f[id]);
+  if(act.length==1)return pPay(x,s,o,act);
+  const can=act.filter(id=>x.bet-s.tt[id]>0),ok=id=>s.a[id]&&s.b[id]==s.cb,
+   need=can.length>1?!can.every(ok):can.some(id=>s.b[id]<s.cb);
+  if(need){const k=O.indexOf(s.t);for(let j=0;j<=O.length;j++){const id=O[(k+j)%O.length];if(can.includes(id)&&!ok(id)){s.t=id;return}}}
+  if(s.st==3)return pShow(x,s,o,act);
+  s.st++;for(let j=s.st==1?3:1;j>0;j--)s.cm.push(s.d[s.i++]);s.b={};s.cb=0;s.a={};
+  if(can.length>1){s.t=can[0];return}}}
+const pAct=(k,r)=>dTx((x,s,o)=>{if(s.t!=AID)throw 0;const need=s.cb-s.b[AID],stk=x.bet-s.tt[AID];
+ if(k=="f")s.f[AID]=1;
+ else{let add=k=="r"?need+r:need;if(add>stk)add=stk;s.b[AID]+=add;s.tt[AID]+=add;s.a[AID]=1;
+  if(s.b[AID]>s.cb){s.cb=s.b[AID];s.a={};s.a[AID]=1}}
+ pAfter(x,s,o)});
+const pQuit=()=>dTx((x,s,o)=>{if(s.f[AID])throw 0;s.f[AID]=1;pAfter(x,s,o)});
+
+function pRoom(){const x=MRD;if(!x){$("#app").innerHTML=`<div class="p">Загрузка…</div>`;return}
+ const s=x.s||{},pp=x.st=="play",dn=x.st=="done",wt=x.st=="wait",host=x.h==AID,my=pp&&s.t==AID,live=pp||dn,
+ cd=c=>gCard({r:c%13,s:GCS[c/13|0]}),need=pp?s.cb-s.b[AID]:0,stk=pp?x.bet-s.tt[AID]:0,step=Math.max(1,Math.floor(x.bet/10)),
+ pot=live?x.pl.reduce((a,p)=>a+s.tt[p.id],0):0,nm=id=>esc((x.pl.find(p=>p.id==id)||{n:"?"}).n);
+ const rows=x.pl.map(p=>{const me=p.id==AID,hc=(s.hc&&s.hc[p.id])||[],fo=s.f&&s.f[p.id],show=me||(dn&&s.sd&&!fo),left=live?x.bet-s.tt[p.id]:0;
+  return `<div class="p" style="${me?"border-color:#ff0;":""}${pp&&s.t==p.id?"background:#4a4a20":""}"><div style="font-weight:700">${esc(p.n)}${me?" (вы)":""}${fo?" · фолд":pp&&left==0?" · ва-банк":""}${pp&&s.t==p.id?" ▶":""}${dn&&x.pay&&x.pay[p.id]>left?" 🏆":""}</div>${live?`<div style="font-size:13px">стек ${f(left)} · внёс ${f(s.tt[p.id])}${dn&&s.nm&&s.nm[p.id]?" · "+s.nm[p.id]:""}</div>`:""}${hc.map(c=>show?cd(c):gCard(null,1)).join("")}</div>`}).join("");
+ const win=dn&&x.pay&&x.pay[AID]>x.bet-s.tt[AID],
+ st=wt?"⏳ Ждём игроков ("+x.pl.length+"/"+x.max+")":dn?(win?"🏆 Победа!":"Проигрыш"):my?"Ваш ход":"Ходит "+nm(s.t);
+ $("#app").innerHTML=`<div class="p big">${MG.pk}</div><div class="p">Взнос (стек): ${f(x.bet)} · баланс ${f(S.bal)}</div>
+ ${live?`<div class="p">Банк: ${f(pot)}<br>${(s.cm||[]).map(cd).join("")||"Карты на столе ещё не открыты"}</div>`:""}
+ <div class="p big ${dn?(win?"win":"lose"):""}">${st}</div>${rows}
+ ${my?`<div class="row"><button class="b r" onclick="pAct('f')">Фолд</button><button class="b k" onclick="pAct('c')">${need>0?"Колл "+f(Math.min(need,stk)):"Чек"}</button></div>
+ <div class="row"><button class="b" onclick="pAct('r',${step})" ${stk>need?"":"disabled"}>Рейз +${f(step)}</button><button class="b" onclick="pAct('r',${x.bet})">Ва-банк</button></div>`:""}
+ ${wt&&host?`<button class="b k" onclick="mStart()" ${x.pl.length<2?"disabled":""}>▶ Старт</button>`:""}
+ <button class="b ${dn?"":"r"}" onclick="mQuit()" ${pp&&s.f[AID]?"disabled":""}>${wt?"Выйти":pp?"Сдаться":"В лобби"}</button>`}
+const _g0=games;games=function(){_g0();
+ if(GS.g=="menu"){const a=$("#app"),b=document.createElement("button");b.className="b";b.textContent="🌐 Сеть";
+  b.onclick=()=>{GS.g="net";GS.msg="";games()};a.insertBefore(b,a.lastElementChild)}};
 </script>
 </body>
 </html>
